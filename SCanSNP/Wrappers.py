@@ -97,6 +97,14 @@ def deconvolution(SparseD, vcf, GenotypesDF,barcodeList):
 	BestIDs = DBLsDF.replace("ID_","", regex = True)
 	
 	DBLmetricsDF = pd.concat([Contributions,DBLsContributions,BestIDs], axis = 1)
+	
+	#DBLs detection Module
+	FittedIterations=iterateFitting(DBLmetricsDF)
+	ID2_Ratio=ID2_RatioSelect(FittedIterations)
+	DBLsList=DBLsMark(DBLmetricsDF, ID2_Ratio)
+	
+	DBLmetricsDF["DropletType"] = "Singlet"
+	DBLmetricsDF.loc[DBLsList,"DropletType"] = "Doublet"
 
 	#pd.concat([Contributions,DBLsContributions,BestIDs], axis = 1).to_csv(writePath + "/DBLmetricsDF.tsv", sep = "\t", header = True, index = True)
 	return DBLmetricsDF

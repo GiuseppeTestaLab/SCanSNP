@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 import rpy2.robjects as robjects
 
-DBLmetricsDF=pd.read_csv("/hpcnfs/scratch/temporary/ieo4777/CoviDiamo/Demultiplexing/NG_23/SCanSNP/DBLmetricsDF.tsv", sep ="\t", index_col=0)
 fitdistPath="/hpcnfs/home/ieo4777/gitted/dblsMark_py/fitdistrplus/fitdist.R"
 quantilePath="/hpcnfs/home/ieo4777/gitted/dblsMark_py/fitdistrplus/quantile.R"
 
@@ -90,7 +89,3 @@ def DBLsMark(DBLmetricsDF, ID2_Ratio):
 	#Subsetting for double (or more) positive droplets
 	DBLs = list(ReadSignals[ReadSignals.sum(axis = 1) > 1].index)
 	return DBLs
-
-FittedIterations=iterateFitting(DBLmetricsDF)
-ID2_Ratio=ID2_RatioSelect(FittedIterations)
-DBLsList=DBLsMark(DBLmetricsDF, ID2_Ratio)
