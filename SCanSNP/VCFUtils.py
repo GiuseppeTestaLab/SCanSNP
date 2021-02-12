@@ -209,8 +209,6 @@ def splitContig(contig, genotypes, nThreads):
 	return ChunkDICT, RemainsDF
 
 
-
-
 def ChunkMaker(GenotypesDF, nThreads, OmniIndex):
 	GenotypeChunkDICT = {}
 	Remains = pd.DataFrame()
@@ -219,6 +217,7 @@ def ChunkMaker(GenotypesDF, nThreads, OmniIndex):
 	for contig in list(GenotypesDF["CHROM"].unique()):
 		GenotypeChunkDICT[contig] = splitContig(contig, GenotypesDF_ss, nThreads)[0]
 		Remains = Remains.append(splitContig(contig, GenotypesDF_ss, nThreads)[1])
+
 	for Chunk in range(0,nThreads):
 		GenotypeChunkDICT_final[Chunk] = pd.DataFrame()
 		for key in GenotypeChunkDICT.keys():
@@ -226,27 +225,54 @@ def ChunkMaker(GenotypesDF, nThreads, OmniIndex):
 				GenotypeChunkDICT_final[Chunk] = GenotypeChunkDICT_final[Chunk].append(GenotypeChunkDICT[key][Chunk])
 			except:
 				continue
+
 	minChunk=min(GenotypeChunkDICT_final, key=lambda k: len(GenotypeChunkDICT_final[k]))
 	GenotypeChunkDICT_final[minChunk] = GenotypeChunkDICT_final[minChunk].append(Remains)
+
 	return GenotypeChunkDICT_final
 
 
 
-def FlattenDict(GenotypeChunkDict):
-	'''
-	Transform dictionary into List of lists + ranges for efficiency
-	'''
-	GenotypeChunkList = []
-	GenotypeChunkIndexesList = []
-	ChunkStart = 0
-	for k in GenotypeChunkDict.keys():
-		chunk=GenotypeChunkDict[k].loc[:,["CHROM","POS","REF","ALT"]]
-		# Create Chunk Index and append to list
-		GenotypeChunkIndexesList.append(range(ChunkStart, ChunkStart+chunk.shape[0]))
-		ChunkStart=ChunkStart+chunk.shape[0]
-		# Re-format chunk to list-like object
-		chunk["POS"] = chunk["POS"].astype(int)
-		chunk=chunk.values.tolist()
-		GenotypeChunkList.append(chunk)
-	GenotypeChunkList = [item for sublist in GenotypeChunkList for item in sublist]
-	return GenotypeChunkList, GenotypeChunkIndexesList
+
+#
+# def ChunkMaker(GenotypesDF, nThreads, OmniIndex):
+# 	GenotypeChunk = {}
+# 	GenotypeChunk_MT= {}
+# 	GenotypesDF_ss = GenotypesDF.loc[OmniIndex].sample(frac = 1)
+# 	GenotypesDF_ss_MT = GenotypesDF_ss[GenotypesDF_ss["CHROM"] == "MT"].sample(frac = 1)
+# 	if len(GenotypesDF_ss_MT) >= nThreads:
+# 		GenotypesDF_ss = GenotypesDF_ss[GenotypesDF_ss["CHROM"] != "MT"]
+# 		#non-MT regions chunking
+# 		chunkSizes = math.floor(len(GenotypesDF_ss)/int(nThreads))
+# 		LeftOver = len(GenotypesDF_ss)%nThreads
+# 		ChunkStart = 0
+# 		for Chunk in range(0,nThreads):
+# 			if Chunk < nThreads-1:
+# 				GenotypeChunk[Chunk] = GenotypesDF_ss.iloc[range(ChunkStart, ChunkStart+chunkSizes)]
+# 			elif Chunk == nThreads-1:
+# 				GenotypeChunk[Chunk] = GenotypesDF_ss.iloc[range(ChunkStart, ChunkStart+chunkSizes+LeftOver)]
+# 			ChunkStart = ChunkStart + chunkSizes
+# 		#MT regions chunking
+# 		chunkSizes = math.floor(len(GenotypesDF_ss_MT)/int(nThreads))
+# 		LeftOver = len(GenotypesDF_ss_MT)%nThreads
+# 		ChunkStart = 0
+# 		for Chunk in range(0,nThreads):
+# 			if Chunk < nThreads-1:
+# 				GenotypeChunk_MT[Chunk] = GenotypesDF_ss_MT.iloc[range(ChunkStart, ChunkStart+chunkSizes)]
+# 			elif Chunk == nThreads-1:
+# 				GenotypeChunk_MT[Chunk] = GenotypesDF_ss_MT.iloc[range(ChunkStart, ChunkStart+chunkSizes+LeftOver)]
+# 			ChunkStart = ChunkStart + chunkSizes
+# 		#Merging both dicionaries
+# 		for chunk in GenotypeChunk.keys():
+# 			GenotypeChunk[chunk]=pd.concat([GenotypeChunk[chunk],GenotypeChunk_MT[chunk]]).sample(frac = 1)
+# 	else:
+# 		chunkSizes = math.floor(len(GenotypesDF_ss)/int(nThreads))
+# 		LeftOver = len(GenotypesDF_ss)%nThreads
+# 		ChunkStart = 0
+# 		for Chunk in range(0,nThreads):
+# 			if Chunk < nThreads-1:
+# 				GenotypeChunk[Chunk] = GenotypesDF_ss.iloc[range(ChunkStart, ChunkStart+chunkSizes)]
+# 			elif Chunk == nThreads-1:
+# 				GenotypeChunk[Chunk] = GenotypesDF_ss.iloc[range(ChunkStart, ChunkStart+chunkSizes+LeftOver)]
+# 			ChunkStart = ChunkStart + chunkSizes
+# 	return GenotypeChunk

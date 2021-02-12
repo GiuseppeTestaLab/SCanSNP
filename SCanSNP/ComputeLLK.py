@@ -4,9 +4,9 @@
 
 import pysam
 from VCFUtils import *
-from GenUtils import *
 
-def ComputeLikelihood(vcf,GenotypesDF,SparseD,DiffOnlyIndex):
+
+def ComputeLikelihood(vcf,GenotypesDF,countDf,barcodeList,DiffOnlyIndex):
 	'''
 	The ComputeLikelihood function calculates and sum up Altscores and Refscores of the possible mixed genotypes for every locus barcode-wise
 	Altscore: (#Alt reads)*(#Alt alleles in the genotype)/(#Total Alt alleles across all mixed genotypes)
@@ -14,21 +14,21 @@ def ComputeLikelihood(vcf,GenotypesDF,SparseD,DiffOnlyIndex):
 	PerGenotypeLLK = Altscore + Refscore
 	IGNORING DOUBLETS!!
 	'''
-	SRef,SAlt,GenotypesDF_sliced = MultiSlice(SparseD, GenotypesDF, DiffOnlyIndex)
-	totRefAlleles = GenotypesDF_sliced[[ sample+"_RefAl" for sample in ExtractSamples(vcf)]].sum(axis =1)
-	totAltAlleles = GenotypesDF_sliced[[ sample+"_AltAl" for sample in ExtractSamples(vcf)]].sum(axis =1)
-	ScorePerBArcode = pd.DataFrame( columns = list(ExtractSamples(vcf)), index = SparseD["Barcode"])
+	GenotypesDF_DiffOnly = GenotypesDF.loc[DiffOnlyIndex]
+	countDf_DiffOnly = countDf.loc[DiffOnlyIndex]
+	totRefAlleles = GenotypesDF_DiffOnly[[ sample+"_RefAl" for sample in ExtractSamples(vcf)]].sum(axis =1)
+	totAltAlleles = GenotypesDF_DiffOnly[[ sample+"_AltAl" for sample in ExtractSamples(vcf)]].sum(axis =1)
+	ScorePerBArcode = pd.DataFrame( columns = list(ExtractSamples(vcf)), index = [ cell for cell in barcodeList])
 	for geno in list(ExtractSamples(vcf)):
-		# in order to account for ploidy
-		npRefGenotypes = (GenotypesDF_sliced[geno+"_RefAl"]*0.5).to_numpy()
-		RefPerGeno=SRef.transpose().multiply(npRefGenotypes).multiply(1/totRefAlleles.to_numpy()).transpose()
-		npAltGenotypes = (GenotypesDF_sliced[geno+"_AltAl"]*0.5).to_numpy()
-		AltPerGeno=SAlt.transpose().multiply(npAltGenotypes).multiply(1/totAltAlleles.to_numpy()).transpose()
-		ScorePerBArcode[geno]=np.array((AltPerGeno+RefPerGeno).transpose().sum(axis = 1))
+		RefPerGeno=(countDf_DiffOnly[[cell+"_RefReads" for cell  in barcodeList]].multiply(GenotypesDF_DiffOnly[geno+"_RefAl"]*0.5, axis = 0)).divide(totRefAlleles, axis = 0)
+		AltPerGeno=(countDf_DiffOnly[[cell+"_AltReads" for cell  in barcodeList]].multiply(GenotypesDF_DiffOnly[geno+"_AltAl"]*0.5, axis = 0)).divide(totAltAlleles, axis = 0)
+		RefPerGeno.columns = barcodeList
+		AltPerGeno.columns = barcodeList
+		ScorePerBArcode[geno]=RefPerGeno.add(AltPerGeno, axis = 0 ,fill_value = 0.0).sum(axis = 0)
 	return ScorePerBArcode
 
 
-def ComputeSecondIDLikelihood(SingularLoci_Alt, SingularLoci_Ref, countDf, barcodeList):
+def ComputeSecondIDLikelihood( SingularLoci_Alt, SingularLoci_Ref, countDf, barcodeList):
 	AltSingularGenotype = GenotypesDF.loc[SingularLoci_Alt,[ID+'_AltAl' for ID in list(ExtractSamples(vcf))]].replace(2,1)
 	RefSingularGenotype =  GenotypesDF.loc[SingularLoci_Ref,[ID+'_RefAl' for ID in list(ExtractSamples(vcf))]].replace(2,1)
 	AltCuntsSS= countDf.loc[SingularLoci_Alt,[barcode+'_AltReads' for barcode in barcodeList]]
