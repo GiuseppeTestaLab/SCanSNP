@@ -1,7 +1,10 @@
+#!/usr/bin/env python
+
 import itertools
 from VCFUtils import *
 from sklearn.linear_model import LogisticRegression
-
+from DBLsutils import *
+from GenUtils import *
 
 def LocusSpecNoisCalc(DropToDBLDict,Doublet,SingularLociScoreDF,GenotypesDF,vcf,HomozlociList,RefHetLoci,AltHetLoci):
 	comp1 = Doublet[0]
@@ -40,149 +43,69 @@ def LocusSpecNoisCalc(DropToDBLDict,Doublet,SingularLociScoreDF,GenotypesDF,vcf,
 	return CleanRefSignal,CleanAltSignal,CleanRef_HET_Signal,CleanAlt_HET_Signal
 
 
-# def DBLScore(DropToDBLDict,countDF,DBLSpecificSingularLociHomoz,DBLSpecificSingularLociHeteroRef,DBLSpecificSingularLociHeteroAlt,vcf, GenotypesDF,SingularLociScoreDF):
-# 	DBLInfo = pd.DataFrame( columns = ["DBL_InformativeUMIs","DBL_FirstID_Score","DBL_SecondID_Score"])
-# 	for Doublet in ExtractOrderedDoublets(vcf):
-# 		HomozlociList=DBLSpecificSingularLociHomoz[Doublet]
-# 		RefHetLoci=DBLSpecificSingularLociHeteroRef[Doublet]
-# 		AltHetLoci=DBLSpecificSingularLociHeteroAlt[Doublet]
-# 		AltReads=countDF[[Drop+'_AltReads' for Drop in DropToDBLDict[Doublet]]]
-# 		RefReads=countDF[[Drop+'_RefReads' for Drop in DropToDBLDict[Doublet]]]
-# 		AltReads.columns = [col.split("_")[0] for col in  AltReads.columns]
-# 		RefReads.columns = [col.split("_")[0] for col in  RefReads.columns]
-# 		InformativeReads=AltReads.loc[AltHetLoci].sum()+RefReads.loc[RefHetLoci].sum()+RefReads.loc[HomozlociList].sum()+AltReads.loc[HomozlociList].sum()
-# 		comp1 = Doublet[0]
-# 		comp2 = Doublet[1]
-# 		HomozRefSingularGenotype = GenotypesDF.loc[HomozlociList,[comp1+"_RefAl",comp2+"_RefAl"]].replace(1,2)
-# 		HomozAltSingularGenotype = GenotypesDF.loc[HomozlociList,[comp1+"_AltAl",comp2+"_AltAl"]].replace(1,2)
-# 		HeterozRefSingularGenotype = GenotypesDF.loc[RefHetLoci,[comp1+"_RefAl",comp2+"_RefAl"]].replace(1,2)
-# 		HeterozAltSingularGenotype = GenotypesDF.loc[AltHetLoci,[comp1+"_AltAl",comp2+"_AltAl"]].replace(1,2)
-# 		CleanRefSignal,CleanAltSignal,CleanRef_HET_Signal,CleanAlt_HET_Signal=LocusSpecNoisCalc(DropToDBLDict,Doublet,SingularLociScoreDF,GenotypesDF,vcf,HomozlociList,RefHetLoci,AltHetLoci)
-# 		#First thing use HomoLoci information
-# 		#First thing use HomoLoci information
-# 		#First thing use HomoLoci information
-# 		RefReads_HOMOZ=RefReads.loc[HomozlociList].multiply(CleanRefSignal)
-# 		AltReads_HOMOZ=AltReads.loc[HomozlociList].multiply(CleanAltSignal)
-# 		HomozRefScoresComp1 = RefReads_HOMOZ.multiply(HomozRefSingularGenotype[comp1+"_RefAl"], axis = 0)
-# 		HomozRefScoresComp2 = RefReads_HOMOZ.multiply(HomozRefSingularGenotype[comp2+"_RefAl"], axis = 0)
-# 		HomozAltScoresComp1 = AltReads_HOMOZ.multiply(HomozAltSingularGenotype[comp1+"_AltAl"], axis = 0)
-# 		HomozAltScoresComp2 = AltReads_HOMOZ.multiply(HomozAltSingularGenotype[comp2+"_AltAl"], axis = 0)
-# 		HomozComp1Total = HomozRefScoresComp1.add(HomozAltScoresComp1,fill_value = 0.0)
-# 		HomozComp2Total = HomozRefScoresComp2.add(HomozAltScoresComp2,fill_value = 0.0)
-# 		#Now info about Singular Ref loci
-# 		#Now info about Singular Ref loci
-# 		#Now info about Singular Ref loci
-# 		RefReads_HETEROZ=RefReads.loc[RefHetLoci].multiply(CleanRef_HET_Signal)
-# 		HeterozRefScoreComp1 = RefReads_HETEROZ.multiply(HeterozRefSingularGenotype[comp1+"_RefAl"], axis = 0)
-# 		HeterozRefScoreComp2 = RefReads_HETEROZ.multiply(HeterozRefSingularGenotype[comp2+"_RefAl"], axis = 0)
-# 		#Now those of Singular Alt loci
-# 		#Now those of Singular Alt loci
-# 		#Now those of Singular Alt loci
-# 		AltReads_HETEROZ=AltReads.loc[AltHetLoci].multiply(CleanAlt_HET_Signal)
-# 		HeterozAltScoreComp1 = AltReads_HETEROZ.multiply(HeterozAltSingularGenotype[comp1+"_AltAl"], axis = 0)
-# 		HeterozAltScoreComp2 = AltReads_HETEROZ.multiply(HeterozAltSingularGenotype[comp2+"_AltAl"], axis = 0)
-# 		### TOTAL SCORES
-# 		Comp1CumulativeScore = HomozComp1Total.sum()+HeterozRefScoreComp1.sum()+HeterozAltScoreComp1.sum()
-# 		Comp2CumulativeScore = HomozComp2Total.sum()+HeterozRefScoreComp2.sum()+HeterozAltScoreComp2.sum()
-# 		TotalScore = Comp1CumulativeScore.add(Comp2CumulativeScore,fill_value = 0.0)
-# 		#SNG score will be the ratio between reads assigned to 1st id and reads assigned to second id
-# 		#Wrapping together into DF slice
-# 		DBLstatus = pd.concat([InformativeReads.to_frame(name = "DBL_InformativeUMIs"),
-# 			Comp1CumulativeScore.to_frame(name = "DBL_FirstID_Score"),
-# 			Comp2CumulativeScore.to_frame(name = "DBL_SecondID_Score")], axis = 1)
-# 		DBLInfo = pd.concat([DBLInfo,DBLstatus], axis = 0)
-# 	return DBLInfo
 
-
-
-
-
-
-
-
-def QualityMetrics(DropToDBLDict,SparseD,DBLSpecificSingularLociHomoz,DBLSpecificSingularLociHeteroRef,DBLSpecificSingularLociHeteroAlt,vcf, GenotypesDF,SingularLociScoreDF):
-	'''
-
-	'''
-	DBLInfo = pd.DataFrame( columns = ["DBL_InformativeUMIs","DBL_FirstID_Score","DBL_SecondID_Score"])
-
-#for Doublet in ExtractOrderedDoublets(vcf):
-
-Doublet = ExtractOrderedDoublets(vcf)[0]
-
-
-#DBLs specific Mask selection
-SparseD_BolMask_DBL = SparseD["Barcode"].isin(DropToDBLDict[Doublet])
-
-#Extracting specific loci
-HomozlociList=DBLSpecificSingularLociHomoz[Doublet]
-RefHetLoci=DBLSpecificSingularLociHeteroRef[Doublet]
-AltHetLoci=DBLSpecificSingularLociHeteroAlt[Doublet]
-
-
-AltReads=SparseD["sparse_Alt"][:,SparseD_BolMask_DBL]
-RefReads=SparseD["sparse_Ref"][:,SparseD_BolMask_DBL]
-
-
-
-comp1 = Doublet[0]
-comp2 = Doublet[1]
-
-HomozRefSingularGenotype = GenotypesDF.loc[HomozlociList,[comp1+"_RefAl",comp2+"_RefAl"]].replace(1,2)
-HomozAltSingularGenotype = GenotypesDF.loc[HomozlociList,[comp1+"_AltAl",comp2+"_AltAl"]].replace(1,2)
-HeterozRefSingularGenotype = GenotypesDF.loc[RefHetLoci,[comp1+"_RefAl",comp2+"_RefAl"]].replace(1,2)
-HeterozAltSingularGenotype = GenotypesDF.loc[AltHetLoci,[comp1+"_AltAl",comp2+"_AltAl"]].replace(1,2)
-CleanRefSignal,CleanAltSignal,CleanRef_HET_Signal,CleanAlt_HET_Signal=LocusSpecNoisCalc(DropToDBLDict,Doublet,SingularLociScoreDF,GenotypesDF,vcf,HomozlociList,RefHetLoci,AltHetLoci)
-
-
-
-
-#First thing use HomoLoci information
-#First thing use HomoLoci information
-#First thing use HomoLoci information
-
-
-RefReads_HOMOZ=RefReads.loc[HomozlociList].multiply(CleanRefSignal)
-AltReads_HOMOZ=AltReads.loc[HomozlociList].multiply(CleanAltSignal)
-HomozRefScoresComp1 = RefReads_HOMOZ.multiply(HomozRefSingularGenotype[comp1+"_RefAl"], axis = 0)
-HomozRefScoresComp2 = RefReads_HOMOZ.multiply(HomozRefSingularGenotype[comp2+"_RefAl"], axis = 0)
-HomozAltScoresComp1 = AltReads_HOMOZ.multiply(HomozAltSingularGenotype[comp1+"_AltAl"], axis = 0)
-HomozAltScoresComp2 = AltReads_HOMOZ.multiply(HomozAltSingularGenotype[comp2+"_AltAl"], axis = 0)
-HomozComp1Total = HomozRefScoresComp1.add(HomozAltScoresComp1,fill_value = 0.0)
-HomozComp2Total = HomozRefScoresComp2.add(HomozAltScoresComp2,fill_value = 0.0)
-
-
-
-
-
-
-
-
-
-
-#Now info about Singular Ref loci
-#Now info about Singular Ref loci
-#Now info about Singular Ref loci
-RefReads_HETEROZ=RefReads.loc[RefHetLoci].multiply(CleanRef_HET_Signal)
-HeterozRefScoreComp1 = RefReads_HETEROZ.multiply(HeterozRefSingularGenotype[comp1+"_RefAl"], axis = 0)
-HeterozRefScoreComp2 = RefReads_HETEROZ.multiply(HeterozRefSingularGenotype[comp2+"_RefAl"], axis = 0)
-#Now those of Singular Alt loci
-#Now those of Singular Alt loci
-#Now those of Singular Alt loci
-AltReads_HETEROZ=AltReads.loc[AltHetLoci].multiply(CleanAlt_HET_Signal)
-HeterozAltScoreComp1 = AltReads_HETEROZ.multiply(HeterozAltSingularGenotype[comp1+"_AltAl"], axis = 0)
-HeterozAltScoreComp2 = AltReads_HETEROZ.multiply(HeterozAltSingularGenotype[comp2+"_AltAl"], axis = 0)
-### TOTAL SCORES
-Comp1CumulativeScore = HomozComp1Total.sum()+HeterozRefScoreComp1.sum()+HeterozAltScoreComp1.sum()
-Comp2CumulativeScore = HomozComp2Total.sum()+HeterozRefScoreComp2.sum()+HeterozAltScoreComp2.sum()
-TotalScore = Comp1CumulativeScore.add(Comp2CumulativeScore,fill_value = 0.0)
-#SNG score will be the ratio between reads assigned to 1st id and reads assigned to second id
-#Wrapping together into DF slice
-DBLstatus = pd.concat([InformativeReads.to_frame(name = "DBL_InformativeUMIs"),
-	Comp1CumulativeScore.to_frame(name = "DBL_FirstID_Score"),
-	Comp2CumulativeScore.to_frame(name = "DBL_SecondID_Score")], axis = 1)
-DBLInfo = pd.concat([DBLInfo,DBLstatus], axis = 0)
-
-
-
+def LowQualScore(DropToDBLDict,SparseD,DBLSpecificSingularLociHomoz,DBLSpecificSingularLociHeteroRef,DBLSpecificSingularLociHeteroAlt,vcf, GenotypesDF,SingularLociScoreDF):
+	DBLInfo = pd.DataFrame( columns = ["DBL_FirstID_Score","DBL_SecondID_Score"])
+	for Doublet in ExtractOrderedDoublets(vcf):
+		
+		comp1 = Doublet[0]
+		comp2 = Doublet[1]
+		
+		#Slice for relevant Loci/Barcodes
+		#Homoz Loci
+		SRef_HOMOZ,SAlt_HOMOZ,GenotypesDF_sliced_HOMOZ=MultiSlice(SparseD, GenotypesDF, DBLSpecificSingularLociHomoz[Doublet], DropToDBLDict[Doublet])
+		#Heteroz Loci Ref
+		SRef_RefHet,SAlt_RefHet,GenotypesDF_sliced_RefHet=MultiSlice(SparseD, GenotypesDF, DBLSpecificSingularLociHeteroRef[Doublet], DropToDBLDict[Doublet])
+		#Heteroz Loci Alt
+		SRef_AltHet,SAlt_AltHet,GenotypesDF_sliced_AltHet=MultiSlice(SparseD, GenotypesDF, DBLSpecificSingularLociHeteroAlt[Doublet], DropToDBLDict[Doublet])
+		# Locus-specific Noise calculation
+		CleanRefSignal,CleanAltSignal,CleanRef_HET_Signal,CleanAlt_HET_Signal=LocusSpecNoisCalc(DropToDBLDict,
+			Doublet,SingularLociScoreDF,GenotypesDF,vcf,
+			DBLSpecificSingularLociHomoz[Doublet],
+			DBLSpecificSingularLociHeteroRef[Doublet],
+			DBLSpecificSingularLociHeteroAlt[Doublet])
+			
+		GenotypesDF_sliced_HOMOZ=GenotypesDF_sliced_HOMOZ.replace(1,2)
+		GenotypesDF_sliced_RefHet=GenotypesDF_sliced_RefHet.replace(1,2)
+		GenotypesDF_sliced_AltHet=GenotypesDF_sliced_AltHet.replace(1,2)
+		##First thing use HomoLoci information
+		##First thing use HomoLoci information
+		##First thing use HomoLoci information
+		# Cleaning Signals from Locus Nloise
+		RefReads_HOMOZ=SRef_HOMOZ.multiply(CleanRefSignal)
+		AltReads_HOMOZ=SAlt_HOMOZ.multiply(CleanAltSignal)
+		#For each component of Putative DBl we calc the score
+		HomozRefScoresComp1 = RefReads_HOMOZ.T.multiply(GenotypesDF_sliced_HOMOZ[comp1+"_RefAl"].to_numpy()).T
+		HomozRefScoresComp2 = RefReads_HOMOZ.T.multiply(GenotypesDF_sliced_HOMOZ[comp2+"_RefAl"].to_numpy()).T
+		HomozAltScoresComp1 = AltReads_HOMOZ.T.multiply(GenotypesDF_sliced_HOMOZ[comp1+"_AltAl"].to_numpy()).T
+		HomozAltScoresComp2 = AltReads_HOMOZ.T.multiply(GenotypesDF_sliced_HOMOZ[comp2+"_AltAl"].to_numpy()).T
+		HomozComp1Total = HomozRefScoresComp1+HomozAltScoresComp1
+		HomozComp2Total = HomozRefScoresComp2+HomozAltScoresComp2
+		
+		#Now info about Singular Ref loci
+		#Now info about Singular Ref loci
+		#Now info about Singular Ref loci
+		# Cleaning Signals from Locus Nloise
+		RefReads_HETEROZ=SRef_RefHet.multiply(CleanRef_HET_Signal)
+		HeterozRefScoreComp1 = RefReads_HETEROZ.T.multiply(GenotypesDF_sliced_RefHet[comp1+"_RefAl"].to_numpy()).T
+		HeterozRefScoreComp2 = RefReads_HETEROZ.T.multiply(GenotypesDF_sliced_RefHet[comp2+"_RefAl"].to_numpy()).T
+		
+		#Now those of Singular Alt loci
+		#Now those of Singular Alt loci
+		#Now those of Singular Alt loci
+		AltReads_HETEROZ=SAlt_AltHet.multiply(CleanAlt_HET_Signal)
+		HeterozAltScoreComp1 = AltReads_HETEROZ.T.multiply(GenotypesDF_sliced_AltHet[comp1+"_AltAl"].to_numpy()).T
+		HeterozAltScoreComp2 = AltReads_HETEROZ.T.multiply(GenotypesDF_sliced_AltHet[comp2+"_AltAl"].to_numpy()).T
+		
+		### COMPUTE TOTAL SCORES
+		### COMPUTE TOTAL SCORES
+		### COMPUTE TOTAL SCORES
+		Comp1CumulativeScore = HomozComp1Total.sum(axis =0)+HeterozRefScoreComp1.sum(axis =0)+HeterozAltScoreComp1.sum(axis =0)
+		Comp2CumulativeScore = HomozComp2Total.sum(axis =0)+HeterozRefScoreComp2.sum(axis =0)+HeterozAltScoreComp2.sum(axis =0)
+		
+		DBLstatus=pd.concat([pd.DataFrame(Comp1CumulativeScore.T, index = DropToDBLDict[Doublet], columns = ["DBL_FirstID_Score"]),
+			pd.DataFrame(Comp2CumulativeScore.T, index = DropToDBLDict[Doublet], columns = ["DBL_SecondID_Score"])], axis = 1)
+			
+		DBLInfo = pd.concat([DBLInfo,DBLstatus], axis = 0)
+		
 	return DBLInfo

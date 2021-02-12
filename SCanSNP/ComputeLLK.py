@@ -4,7 +4,7 @@
 
 import pysam
 from VCFUtils import *
-
+from GenUtils import *
 
 def ComputeLikelihood(vcf,GenotypesDF,SparseD,DiffOnlyIndex):
 	'''
@@ -14,24 +14,21 @@ def ComputeLikelihood(vcf,GenotypesDF,SparseD,DiffOnlyIndex):
 	PerGenotypeLLK = Altscore + Refscore
 	IGNORING DOUBLETS!!
 	'''
-	SparseD_BolMask = SparseD["Locus"].isin(DiffOnlyIndex)
-	GenotypesDF_DiffOnly = GenotypesDF.loc[SparseD["Locus"][SparseD_BolMask]]
-	SRef = SparseD["sparse_Ref"][SparseD_BolMask]
-	SAlt = SparseD["sparse_Alt"][SparseD_BolMask]
-	totRefAlleles = GenotypesDF_DiffOnly[[ sample+"_RefAl" for sample in ExtractSamples(vcf)]].sum(axis =1)
-	totAltAlleles = GenotypesDF_DiffOnly[[ sample+"_AltAl" for sample in ExtractSamples(vcf)]].sum(axis =1)
+	SRef,SAlt,GenotypesDF_sliced = MultiSlice(SparseD, GenotypesDF, DiffOnlyIndex)
+	totRefAlleles = GenotypesDF_sliced[[ sample+"_RefAl" for sample in ExtractSamples(vcf)]].sum(axis =1)
+	totAltAlleles = GenotypesDF_sliced[[ sample+"_AltAl" for sample in ExtractSamples(vcf)]].sum(axis =1)
 	ScorePerBArcode = pd.DataFrame( columns = list(ExtractSamples(vcf)), index = SparseD["Barcode"])
 	for geno in list(ExtractSamples(vcf)):
 		# in order to account for ploidy
-		npRefGenotypes = (GenotypesDF_DiffOnly[geno+"_RefAl"]*0.5).to_numpy()
+		npRefGenotypes = (GenotypesDF_sliced[geno+"_RefAl"]*0.5).to_numpy()
 		RefPerGeno=SRef.transpose().multiply(npRefGenotypes).multiply(1/totRefAlleles.to_numpy()).transpose()
-		npAltGenotypes = (GenotypesDF_DiffOnly[geno+"_AltAl"]*0.5).to_numpy()
+		npAltGenotypes = (GenotypesDF_sliced[geno+"_AltAl"]*0.5).to_numpy()
 		AltPerGeno=SAlt.transpose().multiply(npAltGenotypes).multiply(1/totAltAlleles.to_numpy()).transpose()
 		ScorePerBArcode[geno]=np.array((AltPerGeno+RefPerGeno).transpose().sum(axis = 1))
 	return ScorePerBArcode
 
 
-def ComputeSecondIDLikelihood( SingularLoci_Alt, SingularLoci_Ref, countDf, barcodeList):
+def ComputeSecondIDLikelihood(SingularLoci_Alt, SingularLoci_Ref, countDf, barcodeList):
 	AltSingularGenotype = GenotypesDF.loc[SingularLoci_Alt,[ID+'_AltAl' for ID in list(ExtractSamples(vcf))]].replace(2,1)
 	RefSingularGenotype =  GenotypesDF.loc[SingularLoci_Ref,[ID+'_RefAl' for ID in list(ExtractSamples(vcf))]].replace(2,1)
 	AltCuntsSS= countDf.loc[SingularLoci_Alt,[barcode+'_AltReads' for barcode in barcodeList]]
