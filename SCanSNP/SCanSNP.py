@@ -1,23 +1,65 @@
 
-#!/usr/bin/env python
-
 import argparse
 import os
 
+parser = argparse.ArgumentParser(description='Process some integers.')
+
+
+parser.add_argument('--vcf', dest='vcf', help='joint vcf with all mixed genotypes SNPs',required=True,type=str)
+
+
+#conditionally optionals
+parser.add_argument('--bam', dest='bam', help='for matrixgen mode: BAM file of mixed genotypes',type=str)
+parser.add_argument('--barcodes', dest='barcodes', help='for matrixgen mode: FILTERED barcodes file in standard 10x .tsv format',type=str)
+parser.add_argument('--counts', dest='countpath',type=str,help='for deconvolution mode: path to folder containing Counts.npz countBarcodes.tsv and countLoci.tsv')
+
+#Optionals
+parser.add_argument('--threads', dest='nthreads', help='threads to be used',default=10,type=str)
+parser.add_argument('--outdir', dest='outdir', help='use',default="currentwd",type=str)
+parser.add_argument('--flagLowQual', dest='LowQual', help='Try to fit GMM to flag lowquality cells',default=False,type=bool)
+parser.add_argument('--mode', dest='mode', default="matrixgen",
+	required=False,
+	choices=["matrixgen","deconvolution","skipcount"],
+	type=str,
+	help='creating pileup matrix with ref and alt supporting reads')
+
+args = parser.parse_args()
+
+if args.mode == "matrixgen":
+	if args.bam is None or args.barcodes is None:
+		parser.error('please provide --bam and --barcodes for matrixgen mode')
+
+if args.mode == "skipcount":
+	if args.countpath is None:
+		parser.error('please provide path to SparseD.pkl using --pickle for skipcount mode')
+
+if args.mode is None or args.mode == "deconvolution":
+	if args.bam is None or args.barcodes is None:
+		parser.error('please provide --bam and --barcodes')
 
 
 
-writePath="/hpcnfs/home/ieo4777/temp"
-bamFile="/hpcnfs/scratch/temporary/Dav_vc/0_CellrangerAlign/Sample_S20272_157/outs/possorted_genome_bam.bam"
-vcf="/hpcnfs/scratch/temporary/Dav_vc/2_Combining/Sample_S20273_157/output/combinedVCF/jointGenotype.g.vcf"
-barcodesFILE="/hpcnfs/home/ieo4777/temp/barcodes.tsv"
-writePath="/hpcnfs/home/ieo4777/temp"
-countpath="/hpcnfs/home/ieo4777/temp"
+mode=args.mode
+bamFile=args.bam
+vcf=args.vcf
+barcodesFILE=args.barcodes
+nThreads=int(args.nthreads)
+outdir=args.outdir
+countpath=args.countpath
 
-nThreads=15
-# outdir=args.outdir
-# countpath=args.countpath
+if outdir == "currentwd":
+	writePath=wd = os.getcwd()
+else:
+	writePath=args.outdir
+	
+if str(writePath).endswith(' '):
+	writePath=str(writePath)[:-1]
 
+if str(writePath).endswith('/'):
+	writePath=str(writePath)[:-1]
+
+if str(countpath).endswith('/'):
+	countpath=str(countpath)[:-1]
 
 
 
@@ -38,8 +80,6 @@ import scipy
 import pickle
 
 
-sys.path.append('/hpcnfs/home/ieo4777/gitted/SCanSNP_v1/SCanSNP')
-
 from VCFUtils import *
 from Wrappers import *
 
@@ -50,34 +90,53 @@ if __name__ == "__main__":
 	MildcleanLoci = LociPreClean_milds(vcf)
 	CleanSingularLoci,SingularLoci_Alt,SingularLoci_Ref = SingularLociSCan(vcf,cleanLoci)
 	
-	barcodeList=pd.read_csv(barcodesFILE, header=None, names=["b"])["b"].tolist()
+	#barcodeList=pd.read_csv(barcodesFILE, header=None, names=["b"])["b"].tolist()
 	
 	#Genotypes map creation
 	GenotypesDF = creategenotypeDF(vcf)
 	
 	
 	if mode == "matrixgen":
+		'''
+		Performing only count
+		'''
+		barcodeList=pd.read_csv(barcodesFILE, header=None, names=["b"])["b"].tolist()
 		SparseD = CountsMatrices(CleanSingularLoci, cleanLoci,
-			MildcleanLoci, GenotypesDF, 
-			barcodeList, vcf, 
+			MildcleanLoci, GenotypesDF,
+			barcodeList, vcf,
 			nThreads, bamFile)
-
 		#Save ReadCounts in pickle
 		with open(writePath+ '/SparseD.pkl', 'wb') as f:
 			pickle.dump(SparseD, f, pickle.HIGHEST_PROTOCOL)
-	
-	
-	elif mode == "deconvolution":
-		with open(str(countpath)+ '/SparseD.pkl', 'rb') as f:
-			SparseD = pickle.load(f)
+			
 		
-		DBLmetricsDF = deconvolution(SparseD, vcf, GenotypesDF,barcodeList)
-	
+		
+	elif mode == "skipcount":
+		'''
+		Performing only deconvolution based on provided counts
+		'''
+		#Load existing counts
+		with open(str(countpath), 'rb') as f:
+			SparseD = pickle.load(f)
+		#Deconvolution
+		Cell_IDs = deconvolution(SparseD, vcf, GenotypesDF)
+		Cell_IDs.to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True)
+		
+		
 	elif mode == "refineDBLs":
 		print("ComingSoon")
-	
+		
+		
 	else:
-		
-		SparseD = CountsMatrices()
-		
-		DBLmetricsDF = deconvolution(SparseD, vcf, GenotypesDF,barcodeList)
+		'''
+		Perform both count and ceconvolution
+		'''
+		barcodeList=pd.read_csv(barcodesFILE, header=None, names=["b"])["b"].tolist()
+		#counting
+		SparseD = CountsMatrices(CleanSingularLoci, cleanLoci,
+			MildcleanLoci, GenotypesDF,
+			barcodeList, vcf,
+			nThreads, bamFile)
+		#Deconvolution
+		Cell_IDs = deconvolution(SparseD, vcf, GenotypesDF)
+		Cell_IDs.to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True)

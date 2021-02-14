@@ -10,7 +10,7 @@ import seaborn as sns
 from scipy.stats import norm
 
 
-DBLmetricsDF=pd.read_csv("/hpcnfs/scratch/temporary/Dav_vc/0.3_SATIJA_CellHashing_data/SynthDemuxing2/SynthDemux/CELLHASHING/SCanSNP/DBLmetricsDF.tsv", sep ="\t", index_col=0)
+
 
 
 
@@ -39,7 +39,6 @@ def AmbientFactorsEstimate(DBLmetricsDF, DBLsList):
 	AmbientFactors=NormalizedNoise.mean()
 	return AmbientFactors
 
-AmbientFactors=AmbientFactorsEstimate(DBLmetricsDF, DBLsList)
 
 
 def AddPseudoCounts(DBLmetricsDF, AmbientFactors):
@@ -59,7 +58,6 @@ def AddPseudoCounts(DBLmetricsDF, AmbientFactors):
 	return SNGsnoisedDF
 
 
-SNGsnoisedDF=AddPseudoCounts(DBLmetricsDF, AmbientFactors)
 
 
 def mixtureModel(SNGsnoisedDF, HighOutlierThresh = .95,LowOutlierThresh = .05 ):

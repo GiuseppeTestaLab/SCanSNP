@@ -1,9 +1,11 @@
 import pandas as pd
 import numpy as np
 import rpy2.robjects as robjects
+import os
 
-fitdistPath="/hpcnfs/home/ieo4777/gitted/dblsMark_py/fitdistrplus/fitdist.R"
-quantilePath="/hpcnfs/home/ieo4777/gitted/dblsMark_py/fitdistrplus/quantile.R"
+fitdistPath=os.path.join(os.path.dirname(__file__), "fitdistrplus/fitdist.R")
+quantilePath=os.path.join(os.path.dirname(__file__), "fitdistrplus/quantile.R")
+
 
 def iterateFitting(DBLmetricsDF):
 	'''
@@ -89,3 +91,16 @@ def DBLsMark(DBLmetricsDF, ID2_Ratio):
 	#Subsetting for double (or more) positive droplets
 	DBLs = list(ReadSignals[ReadSignals.sum(axis = 1) > 1].index)
 	return DBLs
+
+
+def mainDBLsMark(DBLmetricsDF):
+	'''
+	Wrapping together previous 3 in the main dbls mark function
+	'''
+	
+	#DBLs detection Module
+	FittedIterations=iterateFitting(DBLmetricsDF)
+	ID2_Ratio=ID2_RatioSelect(FittedIterations)
+	DBLsList=DBLsMark(DBLmetricsDF, ID2_Ratio)
+	
+	return DBLsList

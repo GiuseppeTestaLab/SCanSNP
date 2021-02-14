@@ -44,27 +44,27 @@ def LocusSpecNoisCalc(DropToDBLDict,Doublet,SingularLociScoreDF,GenotypesDF,vcf,
 
 
 
-def LowQualScore(DropToDBLDict,SparseD,DBLSpecificSingularLociHomoz,DBLSpecificSingularLociHeteroRef,DBLSpecificSingularLociHeteroAlt,vcf, GenotypesDF,SingularLociScoreDF):
+def LowQualScore(DropToDBLDict,SparseD,DBLSpecificSingularLociDict,vcf, GenotypesDF,SingularLociScoreDF):
 	DBLInfo = pd.DataFrame( columns = ["DBL_FirstID_Score","DBL_SecondID_Score"])
 	for Doublet in ExtractOrderedDoublets(vcf):
-		
+
 		comp1 = Doublet[0]
 		comp2 = Doublet[1]
-		
+
 		#Slice for relevant Loci/Barcodes
 		#Homoz Loci
-		SRef_HOMOZ,SAlt_HOMOZ,GenotypesDF_sliced_HOMOZ=MultiSlice(SparseD, GenotypesDF, DBLSpecificSingularLociHomoz[Doublet], DropToDBLDict[Doublet])
+		SRef_HOMOZ,SAlt_HOMOZ,GenotypesDF_sliced_HOMOZ=MultiSlice(SparseD, GenotypesDF, DBLSpecificSingularLociDict["Homoz"][Doublet], DropToDBLDict[Doublet])
 		#Heteroz Loci Ref
-		SRef_RefHet,SAlt_RefHet,GenotypesDF_sliced_RefHet=MultiSlice(SparseD, GenotypesDF, DBLSpecificSingularLociHeteroRef[Doublet], DropToDBLDict[Doublet])
+		SRef_RefHet,SAlt_RefHet,GenotypesDF_sliced_RefHet=MultiSlice(SparseD, GenotypesDF, DBLSpecificSingularLociDict["HeteroRef"][Doublet], DropToDBLDict[Doublet])
 		#Heteroz Loci Alt
-		SRef_AltHet,SAlt_AltHet,GenotypesDF_sliced_AltHet=MultiSlice(SparseD, GenotypesDF, DBLSpecificSingularLociHeteroAlt[Doublet], DropToDBLDict[Doublet])
+		SRef_AltHet,SAlt_AltHet,GenotypesDF_sliced_AltHet=MultiSlice(SparseD, GenotypesDF, DBLSpecificSingularLociDict["HeteroAlt"][Doublet], DropToDBLDict[Doublet])
 		# Locus-specific Noise calculation
 		CleanRefSignal,CleanAltSignal,CleanRef_HET_Signal,CleanAlt_HET_Signal=LocusSpecNoisCalc(DropToDBLDict,
 			Doublet,SingularLociScoreDF,GenotypesDF,vcf,
-			DBLSpecificSingularLociHomoz[Doublet],
-			DBLSpecificSingularLociHeteroRef[Doublet],
-			DBLSpecificSingularLociHeteroAlt[Doublet])
-			
+			DBLSpecificSingularLociDict["Homoz"][Doublet],
+			DBLSpecificSingularLociDict["HeteroRef"][Doublet],
+			DBLSpecificSingularLociDict["HeteroAlt"][Doublet])
+
 		GenotypesDF_sliced_HOMOZ=GenotypesDF_sliced_HOMOZ.replace(1,2)
 		GenotypesDF_sliced_RefHet=GenotypesDF_sliced_RefHet.replace(1,2)
 		GenotypesDF_sliced_AltHet=GenotypesDF_sliced_AltHet.replace(1,2)
@@ -81,7 +81,7 @@ def LowQualScore(DropToDBLDict,SparseD,DBLSpecificSingularLociHomoz,DBLSpecificS
 		HomozAltScoresComp2 = AltReads_HOMOZ.T.multiply(GenotypesDF_sliced_HOMOZ[comp2+"_AltAl"].to_numpy()).T
 		HomozComp1Total = HomozRefScoresComp1+HomozAltScoresComp1
 		HomozComp2Total = HomozRefScoresComp2+HomozAltScoresComp2
-		
+
 		#Now info about Singular Ref loci
 		#Now info about Singular Ref loci
 		#Now info about Singular Ref loci
@@ -89,23 +89,23 @@ def LowQualScore(DropToDBLDict,SparseD,DBLSpecificSingularLociHomoz,DBLSpecificS
 		RefReads_HETEROZ=SRef_RefHet.multiply(CleanRef_HET_Signal)
 		HeterozRefScoreComp1 = RefReads_HETEROZ.T.multiply(GenotypesDF_sliced_RefHet[comp1+"_RefAl"].to_numpy()).T
 		HeterozRefScoreComp2 = RefReads_HETEROZ.T.multiply(GenotypesDF_sliced_RefHet[comp2+"_RefAl"].to_numpy()).T
-		
+
 		#Now those of Singular Alt loci
 		#Now those of Singular Alt loci
 		#Now those of Singular Alt loci
 		AltReads_HETEROZ=SAlt_AltHet.multiply(CleanAlt_HET_Signal)
 		HeterozAltScoreComp1 = AltReads_HETEROZ.T.multiply(GenotypesDF_sliced_AltHet[comp1+"_AltAl"].to_numpy()).T
 		HeterozAltScoreComp2 = AltReads_HETEROZ.T.multiply(GenotypesDF_sliced_AltHet[comp2+"_AltAl"].to_numpy()).T
-		
+
 		### COMPUTE TOTAL SCORES
 		### COMPUTE TOTAL SCORES
 		### COMPUTE TOTAL SCORES
 		Comp1CumulativeScore = HomozComp1Total.sum(axis =0)+HeterozRefScoreComp1.sum(axis =0)+HeterozAltScoreComp1.sum(axis =0)
 		Comp2CumulativeScore = HomozComp2Total.sum(axis =0)+HeterozRefScoreComp2.sum(axis =0)+HeterozAltScoreComp2.sum(axis =0)
-		
+
 		DBLstatus=pd.concat([pd.DataFrame(Comp1CumulativeScore.T, index = DropToDBLDict[Doublet], columns = ["DBL_FirstID_Score"]),
 			pd.DataFrame(Comp2CumulativeScore.T, index = DropToDBLDict[Doublet], columns = ["DBL_SecondID_Score"])], axis = 1)
-			
+
 		DBLInfo = pd.concat([DBLInfo,DBLstatus.round(2)], axis = 0)
-		
+
 	return DBLInfo

@@ -10,7 +10,6 @@ import pandas as pd
 import itertools
 from scipy.sparse import csr_matrix
 
-sys.path.append('./SCanSNPv3_REWORKEDLIST/')
 
 
 
