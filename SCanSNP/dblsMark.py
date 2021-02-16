@@ -17,6 +17,7 @@ def iterateFitting(DBLmetricsDF):
 	r=robjects.r
 	r.source(fitdistPath)
 	r.source(quantilePath)
+	print("Iterative fitting negbin for different ID1/ID2 ratios")
 	FittedIterations = pd.DataFrame(index = np.arange(0.1,0.61, 0.01).round(2), dtype="float32")
 	for SecondIDfraction in np.arange(0.1,0.61, 0.01).round(2):
 		Outliers="Trimmed"

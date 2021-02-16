@@ -24,7 +24,7 @@ def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, bar
 	print('Splitting Variants into chunks...')
 	GenotypeChunkList,GenotypeChunkIndexesList = FlattenDict(ChunkMaker(GenotypesDF, nThreads, OmniIndex))
 
-	print('Starting the pileup...')
+	print('Pileup started...')
 	start = time.time()
 
 	#FireUp main Pileupper
@@ -111,7 +111,7 @@ def deconvolution(SparseD, vcf, GenotypesDF, outdir, LowQual):
 	
 	if LowQual == True:
 		QualDF = main_FlagLowQual(DBLmetricsDF, DBLsList, outdir)
-		Cell_IDs = pd.concat([DBLmetricsDF, QualDF])
+		Cell_IDs = pd.concat([DBLmetricsDF, QualDF], axis = 1)
 	else:
 		Cell_IDs = DBLmetricsDF
 	
