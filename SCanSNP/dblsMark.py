@@ -1,7 +1,9 @@
+
 import pandas as pd
 import numpy as np
 import rpy2.robjects as robjects
 import os
+
 
 fitdistPath=os.path.join(os.path.dirname(__file__), "fitdistrplus/fitdist.R")
 quantilePath=os.path.join(os.path.dirname(__file__), "fitdistrplus/quantile.R")
@@ -93,7 +95,7 @@ def DBLsMark(DBLmetricsDF, ID2_Ratio):
 	return DBLs
 
 
-def mainDBLsMark(DBLmetricsDF):
+def main__DBLsMark(DBLmetricsDF):
 	'''
 	Wrapping together previous 3 in the main dbls mark function
 	'''

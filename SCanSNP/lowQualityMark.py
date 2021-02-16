@@ -8,8 +8,9 @@ import scipy.stats as stats
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import norm
-
-
+import numpy as np
+from scipy import stats
+from plots import FittedMixturePlot
 
 
 
@@ -41,79 +42,54 @@ def AmbientFactorsEstimate(DBLmetricsDF, DBLsList):
 
 
 
-def AddPseudoCounts(DBLmetricsDF, AmbientFactors):
-	SNGsnoisedDF = DBLmetricsDF.loc[DBLmetricsDF.index.difference(DBLsList)]
+def AddPseudoCounts(DBLmetricsDF, AmbientFactors, DBLsList):
+	NoisedIDs = DBLmetricsDF.loc[DBLmetricsDF.index.difference(DBLsList)]
 	#Add 2 columns with correct ambientFactors
-	SNGsnoisedDF["NoiseFactor_ID1"] = "ID_"+SNGsnoisedDF["FirstID"]
-	SNGsnoisedDF["NoiseFactor_ID2"] = "ID_"+SNGsnoisedDF["SecondID"]
-	SNGsnoisedDF["NoiseFactor_ID1"]=SNGsnoisedDF["NoiseFactor_ID1"].replace(  SNGsnoisedDF["NoiseFactor_ID1"].unique().tolist(),    AmbientFactors.loc[SNGsnoisedDF["NoiseFactor_ID1"].unique().tolist()].values.tolist()  )
-	SNGsnoisedDF["NoiseFactor_ID2"]=SNGsnoisedDF["NoiseFactor_ID2"].replace(  SNGsnoisedDF["NoiseFactor_ID2"].unique().tolist(),    AmbientFactors.loc[SNGsnoisedDF["NoiseFactor_ID2"].unique().tolist()].values.tolist()  )
+	NoisedIDs["NoiseFactor_ID1"] = "ID_"+NoisedIDs["FirstID"]
+	NoisedIDs["NoiseFactor_ID2"] = "ID_"+NoisedIDs["SecondID"]
+	NoisedIDs["NoiseFactor_ID1"]=NoisedIDs["NoiseFactor_ID1"].replace(  NoisedIDs["NoiseFactor_ID1"].unique().tolist(),    AmbientFactors.loc[NoisedIDs["NoiseFactor_ID1"].unique().tolist()].values.tolist()  )
+	NoisedIDs["NoiseFactor_ID2"]=NoisedIDs["NoiseFactor_ID2"].replace(  NoisedIDs["NoiseFactor_ID2"].unique().tolist(),    AmbientFactors.loc[NoisedIDs["NoiseFactor_ID2"].unique().tolist()].values.tolist()  )
 	'''
 	Add Ambient factor to Both ID scores, **ambient rate is calculate on total of First ID (more often != 0 and more representative of droplet counts)**
 	and coherent with First ID used for normalization in AmbientFactorsEstimate()
 	'''
-	SNGsnoisedDF["Noised_FirstID_Score"] = SNGsnoisedDF["DBL_FirstID_Score"]+(SNGsnoisedDF["NoiseFactor_ID1"].multiply(SNGsnoisedDF["DBL_FirstID_Score"]))
-	SNGsnoisedDF["Noised_SecondID_Score"] = SNGsnoisedDF["DBL_SecondID_Score"]+(SNGsnoisedDF["NoiseFactor_ID2"].multiply(SNGsnoisedDF["DBL_FirstID_Score"]))
-	SNGsnoisedDF = SNGsnoisedDF[["Noised_FirstID_Score","Noised_SecondID_Score"]]
-	return SNGsnoisedDF
+	NoisedIDs["Noised_FirstID_Score"] = NoisedIDs["DBL_FirstID_Score"]+(NoisedIDs["NoiseFactor_ID1"].multiply(NoisedIDs["DBL_FirstID_Score"]))
+	NoisedIDs["Noised_SecondID_Score"] = NoisedIDs["DBL_SecondID_Score"]+(NoisedIDs["NoiseFactor_ID2"].multiply(NoisedIDs["DBL_FirstID_Score"]))
+	NoisedIDs = NoisedIDs[["Noised_FirstID_Score","Noised_SecondID_Score"]]
+	return NoisedIDs
 
 
 
-
-def mixtureModel(SNGsnoisedDF, HighOutlierThresh = .95,LowOutlierThresh = .05 ):
-
-HighOutlierThresh = .95
-LowOutlierThresh = .05
-SNGsnoisedDF["logFC"] = np.log(SNGsnoisedDF["Noised_FirstID_Score"].divide(SNGsnoisedDF["Noised_SecondID_Score"]))
-#Marking low and high outliers as bonafitr LowQual and GoodQual
-SafeLowQual = SNGsnoisedDF[SNGsnoisedDF["logFC"] < SNGsnoisedDF["logFC"].quantile(LowOutlierThresh)].index.tolist()
-SafeGoodQual = SNGsnoisedDF[SNGsnoisedDF["logFC"] > SNGsnoisedDF["logFC"].quantile(HighOutlierThresh)].index.tolist()
-# Fit mixModel on non-outliers
-SNGsnoisedDF = SNGsnoisedDF[(SNGsnoisedDF["logFC"] < SNGsnoisedDF["logFC"].quantile(HighOutlierThresh)) & (SNGsnoisedDF["logFC"] > SNGsnoisedDF["logFC"].quantile(LowOutlierThresh))]
-gm = GaussianMixture(n_components=2, random_state=0).fit(SNGsnoisedDF["logFC"].to_numpy().reshape(-1,1))
-QualLabels = gm.predict(SNGsnoisedDF["logFC"].to_numpy().reshape(-1,1))
-
-#Simulate fitted components
-C1 = np.random.normal(gm.means_[0][0], np.sqrt(gm.covariances_[0][0][0]), 10000)
-C2 = np.random.normal(gm.means_[1][0], np.sqrt(gm.covariances_[1][0][0]), 10000)
-
-
-###################ààà
-
-plt.clf()
-
-
-import numpy as np
-from scipy import stats
-import matplotlib.pyplot as plt
-from matplotlib.pyplot import figure
+def mixtureModel(NoisedIDs, outdir, DBLsList, HighOutlierThreshold = .95,LowOutlierThreshold = .05 ):
+	NoisedIDs["logFC"] = np.log(NoisedIDs["Noised_FirstID_Score"].divide(NoisedIDs["Noised_SecondID_Score"]))
+	#Marking low and high outliers as bonafitr LowQual and GoodQual
+	SafeLowQual = NoisedIDs[NoisedIDs["logFC"] < NoisedIDs["logFC"].quantile(LowOutlierThreshold)].index.tolist()
+	SafeGoodQual = NoisedIDs[NoisedIDs["logFC"] > NoisedIDs["logFC"].quantile(HighOutlierThreshold)].index.tolist()
+	# Fit mixModel on non-outliers
+	NoisedIDs = NoisedIDs[(NoisedIDs["logFC"] < NoisedIDs["logFC"].quantile(HighOutlierThreshold)) & (NoisedIDs["logFC"] > NoisedIDs["logFC"].quantile(LowOutlierThreshold))]
+	gm = GaussianMixture(n_components=2, random_state=0).fit(NoisedIDs["logFC"].to_numpy().reshape(-1,1))
+	QualLabels = gm.predict(NoisedIDs["logFC"].to_numpy().reshape(-1,1))
+	
+	#Plot Fitting
+	FittedMixturePlot(gm, outdir, NoisedIDs)
+	
+	#Flagging lowquals
+	QualFlag = np.where(QualLabels==gm.means_.argmax(), "GoodQuality", "LowQuality")
+	QualDF=pd.DataFrame(QualFlag, index = NoisedIDs.index, columns = ["Quality"])
+	
+	SafeLowQual = pd.DataFrame(["LowQuality" for x in range(len(SafeLowQual))], index = SafeLowQual, columns = ["Quality"])
+	SafeGoodQual = pd.DataFrame(["GoodQuality" for x in range(len(SafeGoodQual))], index = SafeGoodQual, columns = ["Quality"])
+	Doublets = pd.DataFrame(["Doublet" for x in range(len(DBLsList))], index = DBLsList, columns = ["Quality"])
+	
+	QualDF = pd.concat([QualDF, SafeLowQual, SafeGoodQual, Doublets])
+	
+	return(QualDF)
 
 
-plt.clf()
-figure(num=None, figsize=(20, 10), dpi=80, facecolor='w', edgecolor='k')
 
-C1 = stats.norm(gm.means_[0][0], np.sqrt(gm.covariances_[0][0][0]))
-C2 = stats.norm(gm.means_[1][0], np.sqrt(gm.covariances_[1][0][0]))
-
-
-mc = gm.weights_
-
-x = np.linspace(min(SNGsnoisedDF["logFC"]), max(SNGsnoisedDF["logFC"]), 501)
-
-
-C1 = C1.pdf(x) * mc[0]
-C2 = C2.pdf(x) * mc[1]
-
-
-gm.means_[0][0] > gm.means_[1][0]
-
-sns.distplot(SNGsnoisedDF["logFC"].to_numpy(), hist=False, label='Mixture')
-plt.plot(x, C1,'--', label='Fitted LowQuality' if gm.means_[0][0] < gm.means_[1][0] else 'Fitted_HighQuality' )
-plt.plot(x, C2,'--',  label='Fitted LowQuality' if gm.means_[0][0] > gm.means_[1][0] else 'Fitted_HighQuality' )
-
-plt.legend(prop={'size': 16}, title = 'Variants', fontsize=25)
-plt.title('logFC Density Plot '+ Var, fontsize=25)
-plt.xlabel("ID1-ID2_logFC", fontsize=25)
-plt.ylabel('Density', fontsize=25)
-
-plt.savefig("/hpcnfs/scratch/temporary/Dav_vc/output.png")
+def main_FlagLowQual(DBLmetricsDF, DBLsList, outdir):
+	AmbientFactors = AmbientFactorsEstimate(DBLmetricsDF, DBLsList)
+	NoisedIDs = AddPseudoCounts(DBLmetricsDF, AmbientFactors, DBLsList)
+	QualDF = mixtureModel(NoisedIDs, outdir, DBLsList, HighOutlierThreshold = .95,LowOutlierThreshold = .05 )
+	
+	return QualDF

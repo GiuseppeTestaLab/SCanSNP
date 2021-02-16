@@ -10,6 +10,7 @@ import itertools
 from ComputeLLK import *
 from GenUtils import *
 from LowQualutils import *
+from lowQualityMark import *
 from dblsMark import *
 
 
@@ -51,63 +52,68 @@ def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, bar
 
 
 
-def deconvolution(SparseD, vcf, GenotypesDF):
+def deconvolution(SparseD, vcf, GenotypesDF, outdir, LowQual):
 	#CountDF reconstruction
 	# SparseCounts=scipy.sparse.load_npz(str(countpath) + '/Counts.npz')
 	# Barcodes=pd.read_csv(str(countpath) + '/countBarcodes.tsv', header=None, names=["barcodes"])
 	# Loci=pd.read_csv(str(countpath) + '/countLoci.tsv', header=None, names=["loci"])
-
+	
 	barcodeList = SparseD["Barcode"]
-
+	
 	#Pre-cleaning loci CHECK!!
 	#Pre-cleaning loci CHECK!!
 	cleanLoci = list(set(LociPreClean(vcf)).intersection(list(SparseD["Locus"])))
 	MildcleanLoci = list(set(LociPreClean_milds(vcf)).intersection(list(SparseD["Locus"])))
-
+	
 	#Setting Loci categories
 	DiffOnlyIndex=DiffOnlyIndexMaker(vcf, cleanLoci)
 	CleanSingularLoci,SingularLoci_Alt,SingularLoci_Ref = SingularLociSCan(vcf,cleanLoci)
-
+	
 	DBLSpecificSingularLociDict = {}
 	DBLSpecificSingularLociDict["Homoz"]=DoubletSpecificSingularLociScan(vcf,GenotypesDF, cleanLoci)[1]
 	DBLSpecificSingularLociDict["HeteroAlt"]=DoubletSpecificSingularLociScan(vcf,GenotypesDF, cleanLoci)[2]
 	DBLSpecificSingularLociDict["HeteroRef"]=DoubletSpecificSingularLociScan(vcf,GenotypesDF, cleanLoci)[3]
-
-
+	
+	
 	LikeliHoodsDF=ComputeLikelihood(vcf,GenotypesDF,SparseD,DiffOnlyIndex)
-
-
+	
+	
 	BestBarcodeID=LikeliHoodsDF.idxmax(axis = 1)
-
+	
 	BestInDropDict = defaultdict(list)
 	for key, value in BestBarcodeID.to_dict().items():
 		BestInDropDict[value].append(key)
-
-
+		
+	
 	SingularLociScoreDF = SingularLociCNTR( SingularLoci_Alt, SingularLoci_Ref, SparseD, barcodeList, GenotypesDF,vcf)
 	DBLsDF=NoiseRregression(BestInDropDict, barcodeList, vcf, SingularLociScoreDF, BestBarcodeID)
-
+	
 	#Creation of putative DBL-to-barcode dict
 	DropToDBLDict = defaultdict(list)
 	Barcodes_values = list(DBLsDF.index)
 	DBLtuples_keys=list(zip(DBLsDF["FirstID"],DBLsDF["SecondID"]))
 	for key, value in dict(zip(Barcodes_values, DBLtuples_keys)).items():
 		DropToDBLDict[value].append(key)
-
-	DBLmetricsDF = LowQualScore(DropToDBLDict,SparseD,DBLSpecificSingularLociDict,vcf, GenotypesDF,SingularLociScoreDF)
+	
+	DBLs_ADJ_Contributions = LowQualScore(DropToDBLDict,SparseD,DBLSpecificSingularLociDict,vcf, GenotypesDF,SingularLociScoreDF)
 
 	#Editing DFs before concat
 	Contributions = SingularLociScoreDF[ExtractSamples(vcf)]
-	DBLsContributions = DBLmetricsDF
 	BestIDs = DBLsDF.replace("ID_","", regex = True)
 
-	DBLmetricsDF = pd.concat([Contributions,DBLsContributions,BestIDs], axis = 1)
+	DBLmetricsDF = pd.concat([Contributions,DBLs_ADJ_Contributions,BestIDs], axis = 1)
 
 	#DBLs detection Module
-	DBLsList=mainDBLsMark(DBLmetricsDF)
+	DBLsList = main__DBLsMark(DBLmetricsDF)
 	
 	DBLmetricsDF["DropletType"] = "Singlet"
 	DBLmetricsDF.loc[DBLsList,"DropletType"] = "Doublet"
-
+	
+	if LowQual == True:
+		QualDF = main_FlagLowQual(DBLmetricsDF, DBLsList, outdir)
+		Cell_IDs = pd.concat([DBLmetricsDF, QualDF])
+	else:
+		Cell_IDs = DBLmetricsDF
+	
 	#pd.concat([Contributions,DBLsContributions,BestIDs], axis = 1).to_csv(writePath + "/DBLmetricsDF.tsv", sep = "\t", header = True, index = True)
-	return DBLmetricsDF
+	return Cell_IDs
