@@ -1,4 +1,4 @@
-# SCanSNP_v1
+# SCanSNP
 Stable version
 
 
