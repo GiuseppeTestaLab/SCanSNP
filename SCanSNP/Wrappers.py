@@ -108,12 +108,16 @@ def deconvolution(SparseD, vcf, GenotypesDF, outdir, LowQual):
 	
 	DBLmetricsDF["DropletType"] = "Singlet"
 	DBLmetricsDF.loc[DBLsList,"DropletType"] = "Doublet"
-	
+	DBLmetricsDF["ID"] = DBLmetricsDF["FirstID"]
+	DBLmetricsDF.loc[DBLmetricsDF["DropletType"] == "Doublet","ID"] = "Doublet"
+
 	if LowQual == True:
 		QualDF = main_FlagLowQual(DBLmetricsDF, DBLsList, outdir)
 		Cell_IDs = pd.concat([DBLmetricsDF, QualDF], axis = 1)
 	else:
 		Cell_IDs = DBLmetricsDF
+		
+		
 	
 	#pd.concat([Contributions,DBLsContributions,BestIDs], axis = 1).to_csv(writePath + "/DBLmetricsDF.tsv", sep = "\t", header = True, index = True)
 	return Cell_IDs
