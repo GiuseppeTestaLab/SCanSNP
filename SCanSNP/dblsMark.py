@@ -58,7 +58,7 @@ def ID2_RatioSelect(FittedIterations):
 	FittedIterationsLoss["DBLsLoss"] = FittedIterationsLoss["DBLs"].diff().fillna(0.0).abs()
 	#If 5% outliers trimming failed we ignore the first peak because it will likely be due to non trimmed outliers retention
 	if FittedIterationsLoss["Outliers"].unique()[0] == "NotTrimmed":
-		FittedIterationsLoss <-  FittedIterationsLoss.iloc[2:]
+		FittedIterationsLoss =  FittedIterationsLoss.iloc[2:]
 		MaxLoss = FittedIterationsLoss["DBLsLoss"].idxmax()
 		ID2_Ratio = FittedIterationsLoss.index[FittedIterationsLoss.index.get_loc(MaxLoss)-1]
 	else:
