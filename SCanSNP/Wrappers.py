@@ -12,6 +12,7 @@ from GenUtils import *
 from LowQualutils import *
 from lowQualityMark import *
 from dblsMark import *
+from itertools import chain
 
 
 def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile):
@@ -86,7 +87,16 @@ def deconvolution(SparseD, vcf, GenotypesDF, outdir, LowQual):
 		
 	
 	SingularLociScoreDF = SingularLociCNTR( SingularLoci_Alt, SingularLoci_Ref, SparseD, barcodeList, GenotypesDF,vcf)
-	DBLsDF=NoiseRregression(BestInDropDict, barcodeList, vcf, SingularLociScoreDF, BestBarcodeID)
+	
+	if len(ExtractSamples(vcf)) > 2:
+		DBLsDF=NoiseRregression(BestInDropDict, barcodeList, vcf, SingularLociScoreDF, BestBarcodeID)
+	else:
+		ID1 = list(BestInDropDict.keys())[0]
+		ID2 = list(BestInDropDict.keys())[1]
+		DBLsDF = pd.DataFrame(columns = ["FirstID","SecondID"], index = list(chain(*BestInDropDict.values()))  )
+		DBLsDF.loc[BestInDropDict[ID1], ["FirstID","SecondID"]] = [ID1,ID2]
+		DBLsDF.loc[BestInDropDict[ID2], ["FirstID","SecondID"]] = [ID2,ID1]
+		
 	
 	#Creation of putative DBL-to-barcode dict
 	DropToDBLDict = defaultdict(list)
@@ -96,13 +106,13 @@ def deconvolution(SparseD, vcf, GenotypesDF, outdir, LowQual):
 		DropToDBLDict[value].append(key)
 	
 	DBLs_ADJ_Contributions = LowQualScore(DropToDBLDict,SparseD,DBLSpecificSingularLociDict,vcf, GenotypesDF,SingularLociScoreDF)
-
+	
 	#Editing DFs before concat
 	Contributions = SingularLociScoreDF[ExtractSamples(vcf)]
 	BestIDs = DBLsDF.replace("ID_","", regex = True)
-
+	
 	DBLmetricsDF = pd.concat([Contributions,DBLs_ADJ_Contributions,BestIDs], axis = 1)
-
+	
 	#DBLs detection Module
 	DBLsList = main__DBLsMark(DBLmetricsDF)
 	
@@ -110,7 +120,7 @@ def deconvolution(SparseD, vcf, GenotypesDF, outdir, LowQual):
 	DBLmetricsDF.loc[DBLsList,"DropletType"] = "Doublet"
 	DBLmetricsDF["ID"] = DBLmetricsDF["FirstID"]
 	DBLmetricsDF.loc[DBLmetricsDF["DropletType"] == "Doublet","ID"] = "Doublet"
-
+	
 	if LowQual == True:
 		QualDF = main_FlagLowQual(DBLmetricsDF, DBLsList, outdir)
 		Cell_IDs = pd.concat([DBLmetricsDF, QualDF], axis = 1)
