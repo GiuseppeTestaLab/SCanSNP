@@ -49,15 +49,15 @@ countpath=args.countpath
 LowQual=args.LowQual
 
 if outdir == "currentwd":
-	writePath=wd = os.getcwd()
+	outdir = os.getcwd()
 else:
-	writePath=args.outdir
+	outdir=args.outdir
 	
-if str(writePath).endswith(' '):
-	writePath=str(writePath)[:-1]
+if str(outdir).endswith(' '):
+	outdir=str(outdir)[:-1]
 
-if str(writePath).endswith('/'):
-	writePath=str(writePath)[:-1]
+if str(outdir).endswith('/'):
+	outdir=str(outdir)[:-1]
 
 if str(countpath).endswith('/'):
 	countpath=str(countpath)[:-1]
@@ -108,7 +108,7 @@ if __name__ == "__main__":
 			barcodeList, vcf,
 			nThreads, bamFile)
 		#Save ReadCounts in pickle
-		with open(writePath+ '/SparseD.pkl', 'wb') as f:
+		with open(outdir+ '/SparseD.pkl', 'wb') as f:
 			pickle.dump(SparseD, f, pickle.HIGHEST_PROTOCOL)
 			
 		
