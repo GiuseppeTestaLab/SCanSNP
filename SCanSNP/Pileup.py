@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 
 #Main function scanning BAM
@@ -58,8 +59,8 @@ def ReadCounter(chunkIdx, bamFile, barcodeList, GenotypeChunkList, bannedFlag=38
 def DFMaker(readList, barcodeList):
 	ReadsList=pd.DataFrame(readList, columns = ["Pos","Barcode","Base","Ref","Alt"])
 	uniqueLoci = list(set(ReadsList.Pos))
-	RefReads=ReadsList[ReadsList["Base"] == ReadsList["Ref"]][["Pos","Barcode"]]
-	AltReads=ReadsList[ReadsList["Base"] == ReadsList["Alt"]][["Pos","Barcode"]]
+	RefReads=ReadsList.loc[ReadsList["Base"] == ReadsList["Ref"], ["Pos","Barcode"]]
+	AltReads=ReadsList.loc[ReadsList["Base"] == ReadsList["Alt"], ["Pos","Barcode"]]
 	del ReadsList
 	#Storing Sparse categories
 	Pos_c = pd.CategoricalDtype(sorted(uniqueLoci), ordered=True)
