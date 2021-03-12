@@ -106,6 +106,6 @@ def LowQualScore(DropToDBLDict,SparseD,DBLSpecificSingularLociDict,vcf, Genotype
 		DBLstatus=pd.concat([pd.DataFrame(Comp1CumulativeScore.T, index = DropToDBLDict[Doublet], columns = ["DBL_FirstID_Score"]),
 			pd.DataFrame(Comp2CumulativeScore.T, index = DropToDBLDict[Doublet], columns = ["DBL_SecondID_Score"])], axis = 1)
 
-		DBLInfo = pd.concat([DBLInfo,DBLstatus], axis = 0)
+		DBLInfo = pd.concat([DBLInfo,DBLstatus.round(2)], axis = 0)
 
 	return DBLInfo
