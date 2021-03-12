@@ -13,6 +13,8 @@ from LowQualutils import *
 from lowQualityMark import *
 from dblsMark import *
 from itertools import chain
+import scipy.sparse
+
 
 
 def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile):
@@ -41,16 +43,15 @@ def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, bar
 	pool.join()
 
 	print('Pileup took', time.time()-start, 'seconds.')
-
-	#Merging pooled process results
-	Reads=list(itertools.chain.from_iterable(([result.get() for result in results])))
-
-	#load reads into sparse matrices
-	SparseD = {}
-	SparseD["sparse_Ref"],SparseD["sparse_Alt"],SparseD["Locus"],SparseD["Barcode"] = DFMaker(Reads, barcodeList)
-
+	
+	#Gathering rsults
+	SparseD = {"sparse_Ref" : csr_matrix((0, len(barcodeList))), "sparse_Alt":csr_matrix((0, len(barcodeList))), "Locus" : pd.Series(),  "Barcode" : pd.Series(sorted(list(barcodeList))) }
+	for result in results:
+		SparseD["sparse_Ref"] = scipy.sparse.vstack((SparseD["sparse_Ref"],result.get()["sparse_Ref"]))
+		SparseD["sparse_Alt"] = scipy.sparse.vstack((SparseD["sparse_Alt"],result.get()["sparse_Alt"]))
+		SparseD["Locus"] =  SparseD["Locus"].append(result.get()["Locus"])
+		
 	return SparseD
-
 
 
 def deconvolution(SparseD, vcf, GenotypesDF, outdir, LowQual):
