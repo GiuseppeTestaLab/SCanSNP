@@ -58,7 +58,7 @@ def SingularLociCNTR( SingularLoci_Alt, SingularLoci_Ref, SparseD, barcodeList, 
 	#Sum both pileups into DF
 	for ID in CNTRPerBArcodeRef.keys():
 		TotalCNTR[ID] =  CNTRPerBArcodeRef[ID]+CNTRPerBArcodeAlt[ID]
-	NormCNTR=TotalCNTR.divide(TotalCNTR.sum(axis = 1), axis =0)
+	NormCNTR=TotalCNTR.divide(TotalCNTR.sum(axis = 1), axis =0).round(2)
 	NormCNTR.columns = [Samp + "_Norm" for Samp in TotalCNTR.columns]
 	TotalCNTR = pd.concat([TotalCNTR,NormCNTR], axis = 1)
 	return TotalCNTR
