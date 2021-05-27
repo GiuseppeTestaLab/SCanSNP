@@ -122,7 +122,7 @@ if __name__ == "__main__":
 			SparseD = pickle.load(f)
 		#Deconvolution
 		Cell_IDs = deconvolution(SparseD, vcf, GenotypesDF,outdir, LowQual)
-		Cell_IDs.to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True)
+		Cell_IDs.to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True, index_label = "barcode")
 		
 		
 	elif mode == "refineDBLs":
@@ -139,6 +139,9 @@ if __name__ == "__main__":
 			MildcleanLoci, GenotypesDF,
 			barcodeList, vcf,
 			nThreads, bamFile)
+		#Save ReadCounts in pickle
+		with open(outdir+ '/SparseD.pkl', 'wb') as f:
+			pickle.dump(SparseD, f, pickle.HIGHEST_PROTOCOL)
 		#Deconvolution
 		Cell_IDs = deconvolution(SparseD, vcf, GenotypesDF,outdir,LowQual)
-		Cell_IDs.to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True)
+		Cell_IDs.to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True, index_label = "barcode")
