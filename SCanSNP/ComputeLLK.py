@@ -6,7 +6,7 @@ import pysam
 from VCFUtils import *
 from GenUtils import *
 
-def ComputeLikelihood(vcf,GenotypesDF,SparseD,DiffOnlyIndex):
+def ComputeLikelihood(vcf,GenotypesDF,Counts,DiffOnlyIndex):
 	'''
 	The ComputeLikelihood function calculates and sum up Altscores and Refscores of the possible mixed genotypes for every locus barcode-wise
 	Altscore: (#Alt reads)*(#Alt alleles in the genotype)/(#Total Alt alleles across all mixed genotypes)
@@ -14,16 +14,16 @@ def ComputeLikelihood(vcf,GenotypesDF,SparseD,DiffOnlyIndex):
 	PerGenotypeLLK = Altscore + Refscore
 	IGNORING DOUBLETS!!
 	'''
-	SRef,SAlt,GenotypesDF_sliced = MultiSlice(SparseD, GenotypesDF, DiffOnlyIndex)
-	totRefAlleles = GenotypesDF_sliced[[ sample+"_RefAl" for sample in ExtractSamples(vcf)]].sum(axis =1)
-	totAltAlleles = GenotypesDF_sliced[[ sample+"_AltAl" for sample in ExtractSamples(vcf)]].sum(axis =1)
-	ScorePerBArcode = pd.DataFrame( columns = list(ExtractSamples(vcf)), index = SparseD["Barcode"])
+	LLKCounts,LLKGenotypesDF =  Counts.slice(lociList = DiffOnlyIndex, Genotypes = GenotypesDF)
+	totRefAlleles = LLKGenotypesDF[[ sample+"_RefAl" for sample in ExtractSamples(vcf)]].sum(axis =1)
+	totAltAlleles = LLKGenotypesDF[[ sample+"_AltAl" for sample in ExtractSamples(vcf)]].sum(axis =1)
+	ScorePerBArcode = pd.DataFrame( columns = list(ExtractSamples(vcf)), index = Counts.barcodes)
 	for geno in list(ExtractSamples(vcf)):
 		# in order to account for ploidy
-		npRefGenotypes = (GenotypesDF_sliced[geno+"_RefAl"]*0.5).to_numpy()
-		RefPerGeno=SRef.transpose().multiply(npRefGenotypes).multiply(1/totRefAlleles.to_numpy()).transpose()
-		npAltGenotypes = (GenotypesDF_sliced[geno+"_AltAl"]*0.5).to_numpy()
-		AltPerGeno=SAlt.transpose().multiply(npAltGenotypes).multiply(1/totAltAlleles.to_numpy()).transpose()
+		npRefGenotypes = (LLKGenotypesDF[geno+"_RefAl"]*0.5).to_numpy()
+		RefPerGeno=LLKCounts.sparseRef.transpose().multiply(npRefGenotypes).multiply(1/totRefAlleles.to_numpy()).transpose()
+		npAltGenotypes = (LLKGenotypesDF[geno+"_AltAl"]*0.5).to_numpy()
+		AltPerGeno=LLKCounts.sparseAlt.transpose().multiply(npAltGenotypes).multiply(1/totAltAlleles.to_numpy()).transpose()
 		ScorePerBArcode[geno]=np.array((AltPerGeno+RefPerGeno).transpose().sum(axis = 1))
 	return ScorePerBArcode
 

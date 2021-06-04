@@ -27,7 +27,7 @@ def AmbientFactorsEstimate(DBLmetricsDF, DBLsList):
 	#Model the noise/ambient only using IDs for each droplet not marked as Best nor Second best ID
 	AggregatedNoiseDF = pd.DataFrame()
 	for comb in list(DBLscomb):
-		NotDBLids = [id for id in IDs if id not in ["ID_"+comb[0],"ID_"+comb[1]]]
+		NotDBLids = [id for id in IDs if id not in ["ID_"+comb[0],"ID_"+comb[1],"ID"]]
 		SliceNoise = SNGsmetricsDF[NotDBLids]
 		SliceNoise = SNGsmetricsDF.loc[(SNGsmetricsDF['FirstID'] == comb[0]) & (SNGsmetricsDF['SecondID'] == comb[1]) ,NotDBLids]
 		SliceNoise = SliceNoise[NotDBLids]
@@ -60,22 +60,77 @@ def AddPseudoCounts(DBLmetricsDF, AmbientFactors, DBLsList):
 
 
 
-def mixtureModel(NoisedIDs, outdir, DBLsList, HighOutlierThreshold = .95,LowOutlierThreshold = .05 ):
-	NoisedIDs["logFC"] = np.log(NoisedIDs["Noised_FirstID_Score"].divide(NoisedIDs["Noised_SecondID_Score"]))
+# def mixtureModel(NoisedIDs, outdir, DBLsList,DBLmetricsDF, HighOutlierThreshold = .95,LowOutlierThreshold = .05 ):
+# 	logFC_DF = NoisedIDs.copy()
+	
+# 	#Calc logFC
+# 	logFC_DF["logFC"] = np.log(logFC_DF["Noised_FirstID_Score"].divide(logFC_DF["Noised_SecondID_Score"]))
+	
+	
+# 	#Retrieve Best and Second Best IDs for next fitting
+# 	logFC_DF = pd.concat([logFC_DF,DBLmetricsDF.loc[list(logFC_DF.index), ["FirstID","SecondID"]]], axis = 1)
+	
+# 	#Doublet combinations 
+# 	DBLscomb = list(itertools.combinations(list(set(list(SNGsmetricsDF.FirstID) + list(SNGsmetricsDF.SecondID))), 2))
+	
+# 	# Fit mixModel on non-outliers in Pairwise manner
+# 	QualDF = pd.DataFrame(columns = ["Quality"])
+# 	for comb in list(DBLscomb):
+# 		logFC_DFDBL =  logFC_DF[(logFC_DF["FirstID"].isin(comb)) & (logFC_DF["SecondID"].isin(comb))]
+# 		#
+# 		logFC_DFDBL.shape
+# 		#Marking low and high outliers as bonafide LowQual and GoodQual
+# 		SafeLowQual = logFC_DFDBL[logFC_DFDBL["logFC"] < logFC_DFDBL["logFC"].quantile(LowOutlierThreshold)].index.tolist()
+# 		SafeGoodQual = logFC_DFDBL[logFC_DFDBL["logFC"] > logFC_DFDBL["logFC"].quantile(HighOutlierThreshold)].index.tolist()
+# 		len(SafeLowQual)
+# 		len(SafeGoodQual)
+# 		#
+		
+# 		logFC_DFDBL = logFC_DFDBL[(logFC_DFDBL["logFC"] <= logFC_DFDBL["logFC"].quantile(HighOutlierThreshold)) & (logFC_DFDBL["logFC"] >= logFC_DFDBL["logFC"].quantile(LowOutlierThreshold))]
+# 		logFC_DFDBL.shape
+# 		gm = GaussianMixture(n_components=2, random_state=0, weights_init = [.05,.95]).fit(logFC_DFDBL["logFC"].to_numpy().reshape(-1,1))
+# 		QualLabels = gm.predict(logFC_DFDBL["logFC"].to_numpy().reshape(-1,1))
+# 		#
+# 		#Plot Fitting
+# 		FittedMixturePlot(gm, outdir,comb, logFC_DFDBL)
+# 		#
+# 		#Flagging lowquals
+# 		QualFlag = np.where(QualLabels==gm.means_.argmax(), "GoodQuality", "LowQuality")
+# 		QualDF_Pair=pd.DataFrame(QualFlag, index = logFC_DFDBL.index, columns = ["Quality"])
+# 		#
+# 		SafeLowQual = pd.DataFrame(["LowQuality" for x in range(len(SafeLowQual))], index = SafeLowQual, columns = ["Quality"])
+# 		SafeGoodQual = pd.DataFrame(["GoodQuality" for x in range(len(SafeGoodQual))], index = SafeGoodQual, columns = ["Quality"])
+		
+# 		#
+# 		QualDF_Pair = pd.concat([QualDF_Pair, SafeLowQual, SafeGoodQual])
+# 		QualDF_Pair.shape
+# 		#
+# 		QualDF = pd.concat([QualDF, QualDF_Pair], axis = 0)
+# 	#
+# 	Doublets = pd.DataFrame(["Doublet" for x in range(len(DBLsList))], index = DBLsList, columns = ["Quality"])
+# 	QualDF = pd.concat([QualDF, Doublets])
+# 	return(QualDF)
+
+
+
+def mixtureModel(NoisedIDs, outdir, DBLsList,DBLmetricsDF, HighOutlierThreshold = .95,LowOutlierThreshold = .05 ):
+	NoisedIDs_processed=NoisedIDs.copy()
+	
+	NoisedIDs_processed["logFC"] = np.log(NoisedIDs_processed["Noised_FirstID_Score"].divide(NoisedIDs_processed["Noised_SecondID_Score"]))
 	#Marking low and high outliers as bonafitr LowQual and GoodQual
-	SafeLowQual = NoisedIDs[NoisedIDs["logFC"] < NoisedIDs["logFC"].quantile(LowOutlierThreshold)].index.tolist()
-	SafeGoodQual = NoisedIDs[NoisedIDs["logFC"] > NoisedIDs["logFC"].quantile(HighOutlierThreshold)].index.tolist()
+	SafeLowQual = NoisedIDs_processed[NoisedIDs_processed["logFC"] <= NoisedIDs_processed["logFC"].quantile(LowOutlierThreshold)].index.tolist()
+	SafeGoodQual = NoisedIDs_processed[NoisedIDs_processed["logFC"] >= NoisedIDs_processed["logFC"].quantile(HighOutlierThreshold)].index.tolist()
 	# Fit mixModel on non-outliers
-	NoisedIDs = NoisedIDs[(NoisedIDs["logFC"] < NoisedIDs["logFC"].quantile(HighOutlierThreshold)) & (NoisedIDs["logFC"] > NoisedIDs["logFC"].quantile(LowOutlierThreshold))]
-	gm = GaussianMixture(n_components=2, random_state=0).fit(NoisedIDs["logFC"].to_numpy().reshape(-1,1))
-	QualLabels = gm.predict(NoisedIDs["logFC"].to_numpy().reshape(-1,1))
+	NoisedIDs_processed = NoisedIDs_processed[(NoisedIDs_processed["logFC"] < NoisedIDs_processed["logFC"].quantile(HighOutlierThreshold)) & (NoisedIDs_processed["logFC"] > NoisedIDs_processed["logFC"].quantile(LowOutlierThreshold))]
+	gm = GaussianMixture(n_components=2, random_state=0, weights_init = [.05,.95]).fit(NoisedIDs_processed["logFC"].to_numpy().reshape(-1,1))
+	QualLabels = gm.predict(NoisedIDs_processed["logFC"].to_numpy().reshape(-1,1))
 	
 	#Plot Fitting
-	FittedMixturePlot(gm, outdir, NoisedIDs)
+	FittedMixturePlot(gm, outdir, NoisedIDs_processed)
 	
 	#Flagging lowquals
 	QualFlag = np.where(QualLabels==gm.means_.argmax(), "GoodQuality", "LowQuality")
-	QualDF=pd.DataFrame(QualFlag, index = NoisedIDs.index, columns = ["Quality"])
+	QualDF=pd.DataFrame(QualFlag, index = NoisedIDs_processed.index, columns = ["Quality"])
 	
 	SafeLowQual = pd.DataFrame(["LowQuality" for x in range(len(SafeLowQual))], index = SafeLowQual, columns = ["Quality"])
 	SafeGoodQual = pd.DataFrame(["GoodQuality" for x in range(len(SafeGoodQual))], index = SafeGoodQual, columns = ["Quality"])
@@ -83,13 +138,16 @@ def mixtureModel(NoisedIDs, outdir, DBLsList, HighOutlierThreshold = .95,LowOutl
 	
 	QualDF = pd.concat([QualDF, SafeLowQual, SafeGoodQual, Doublets])
 	
-	return(QualDF)
+	return QualDF
 
 
 
 def main_FlagLowQual(DBLmetricsDF, DBLsList, outdir):
 	AmbientFactors = AmbientFactorsEstimate(DBLmetricsDF, DBLsList)
 	NoisedIDs = AddPseudoCounts(DBLmetricsDF, AmbientFactors, DBLsList)
-	QualDF = mixtureModel(NoisedIDs, outdir, DBLsList, HighOutlierThreshold = .95,LowOutlierThreshold = .05 )
+	QualDF = mixtureModel(NoisedIDs, outdir, DBLsList,DBLmetricsDF, HighOutlierThreshold = .95,LowOutlierThreshold = .05)
 	
-	return QualDF
+	Cell_IDs = pd.concat([DBLmetricsDF, QualDF], axis = 1)
+	
+	
+	return Cell_IDs

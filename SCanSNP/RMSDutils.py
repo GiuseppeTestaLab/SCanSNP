@@ -80,7 +80,7 @@ def RMSDWRAPPER(HomozAltScore,HeterozAltScore, Doublet,DBLSpecificSingularLociDi
 	return RMSD
 
 
-def LowQualScore_RMSD(DropToDBLDict,SparseD,DBLSpecificSingularLociDict,vcf, GenotypesDF,SingularLociScoreDF):
+def LowQualScore_RMSD(DropToDBLDict,Counts,DBLSpecificSingularLociDict,vcf, GenotypesDF,SingularLociScoreDF):
 	DBLInfo = pd.DataFrame( columns = ["DBL_FirstID_Score","DBL_SecondID_Score"])
 	for Doublet in ExtractOrderedDoublets(vcf):
 
@@ -89,11 +89,11 @@ def LowQualScore_RMSD(DropToDBLDict,SparseD,DBLSpecificSingularLociDict,vcf, Gen
 		
 		#Slice for relevant Loci/Barcodes
 		#Homoz Loci
-		SRef_HOMOZ,SAlt_HOMOZ,GenotypesDF_sliced_HOMOZ=MultiSlice(SparseD, GenotypesDF, DBLSpecificSingularLociDict["Homoz"][Doublet], DropToDBLDict[Doublet])
+		SRef_HOMOZ,SAlt_HOMOZ,GenotypesDF_sliced_HOMOZ=MultiSlice(Counts, GenotypesDF, DBLSpecificSingularLociDict["Homoz"][Doublet], DropToDBLDict[Doublet])
 		#Heteroz Loci Ref
-		SRef_RefHet,SAlt_RefHet,GenotypesDF_sliced_RefHet=MultiSlice(SparseD, GenotypesDF, DBLSpecificSingularLociDict["HeteroRef"][Doublet], DropToDBLDict[Doublet])
+		SRef_RefHet,SAlt_RefHet,GenotypesDF_sliced_RefHet=MultiSlice(Counts, GenotypesDF, DBLSpecificSingularLociDict["HeteroRef"][Doublet], DropToDBLDict[Doublet])
 		#Heteroz Loci Alt
-		SRef_AltHet,SAlt_AltHet,GenotypesDF_sliced_AltHet=MultiSlice(SparseD, GenotypesDF, DBLSpecificSingularLociDict["HeteroAlt"][Doublet], DropToDBLDict[Doublet])
+		SRef_AltHet,SAlt_AltHet,GenotypesDF_sliced_AltHet=MultiSlice(Counts, GenotypesDF, DBLSpecificSingularLociDict["HeteroAlt"][Doublet], DropToDBLDict[Doublet])
 		# Locus-specific Noise calculation
 		CleanRefSignal,CleanAltSignal,CleanRef_HET_Signal,CleanAlt_HET_Signal=LocusSpecNoisCalc(DropToDBLDict,
 			Doublet,SingularLociScoreDF,GenotypesDF,vcf,

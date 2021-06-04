@@ -11,61 +11,65 @@ from ComputeLLK import *
 from GenUtils import *
 from LowQualutils import *
 from lowQualityMark import *
+from lowQualityMark_wEmpty import *
 from dblsMark import *
+from dblsMark_wEmpty import *
 from itertools import chain
 import scipy.sparse
 
 
 
-def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile):
-	'''
-	Fire-up the main Pileupper
-	'''
+# def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile):
+# 	'''
+# 	Fire-up the main Pileupper
+# 	'''
 
-	OmniIndex = list(set(CleanSingularLoci + DiffOnlyIndexMaker(vcf, cleanLoci) + DoubletSpecificSingularLociScan(vcf,GenotypesDF, MildcleanLoci)[0]))
+# 	OmniIndex = list(set(CleanSingularLoci + DiffOnlyIndexMaker(vcf, cleanLoci) + DoubletSpecificSingularLociScan(vcf,GenotypesDF, MildcleanLoci)[0]))
 
-	print('Splitting Variants into chunks...')
-	GenotypeChunkList,GenotypeChunkIndexesList = FlattenDict(ChunkMaker(GenotypesDF, nThreads, OmniIndex))
+# 	print('Splitting Variants into chunks...')
+# 	GenotypeChunkList,GenotypeChunkIndexesList = FlattenDict(ChunkMaker(GenotypesDF, nThreads, OmniIndex))
 
-	print('Pileup started...')
-	start = time.time()
+# 	print('Pileup started...')
+# 	start = time.time()
 
-	#FireUp main Pileupper
-	results = []
-	pool=Pool(nThreads)
+# 	#FireUp main Pileupper
+# 	results = []
+# 	pool=Pool(nThreads)
 
-	for chunkIdx in GenotypeChunkIndexesList:
-		result = pool.apply_async(ReadCounter, (chunkIdx, bamFile, barcodeList,GenotypeChunkList))
-		results.append(result)
+# 	for chunkIdx in GenotypeChunkIndexesList:
+# 		result = pool.apply_async(ReadCounter, (chunkIdx, bamFile, barcodeList,GenotypeChunkList))
+# 		results.append(result)
 
 
-	pool.close()
-	pool.join()
+# 	pool.close()
+# 	pool.join()
 
-	print('Pileup took', time.time()-start, 'seconds.')
+# 	print('Pileup took', time.time()-start, 'seconds.')
 	
-	#Gathering rsults
-	SparseD = {"sparse_Ref" : csr_matrix((0, len(barcodeList))), "sparse_Alt":csr_matrix((0, len(barcodeList))), "Locus" : pd.Series(),  "Barcode" : pd.Series(sorted(list(barcodeList))) }
-	for result in results:
-		SparseD["sparse_Ref"] = scipy.sparse.vstack((SparseD["sparse_Ref"],result.get()["sparse_Ref"]))
-		SparseD["sparse_Alt"] = scipy.sparse.vstack((SparseD["sparse_Alt"],result.get()["sparse_Alt"]))
-		SparseD["Locus"] =  SparseD["Locus"].append(result.get()["Locus"])
+# 	#Gathering rsults
+# 	Counts = {"sparse_Ref" : csr_matrix((0, len(barcodeList))), "sparse_Alt":csr_matrix((0, len(barcodeList))), "Locus" : pd.Series(),  "Barcode" : pd.Series(sorted(list(barcodeList))) }
+# 	for result in results:
+# 		Counts["sparse_Ref"] = scipy.sparse.vstack((Counts["sparse_Ref"],result.get()["sparse_Ref"]))
+# 		Counts["sparse_Alt"] = scipy.sparse.vstack((Counts["sparse_Alt"],result.get()["sparse_Alt"]))
+# 		Counts["Locus"] =  Counts["Locus"].append(result.get()["Locus"])
 		
-	return SparseD
+# 	return Counts
 
 
-def deconvolution(SparseD, vcf, GenotypesDF, outdir, LowQual):
+def deconvolution(Counts, vcf, GenotypesDF, outdir, FullDrops, FullDropsKNNseries):
 	#CountDF reconstruction
 	# SparseCounts=scipy.sparse.load_npz(str(countpath) + '/Counts.npz')
 	# Barcodes=pd.read_csv(str(countpath) + '/countBarcodes.tsv', header=None, names=["barcodes"])
 	# Loci=pd.read_csv(str(countpath) + '/countLoci.tsv', header=None, names=["loci"])
 	
-	barcodeList = SparseD["Barcode"]
+	emptyTraining = True if len(FullDrops) < len(Counts.barcodes) else False
+	
+	barcodeList = Counts.barcodes
 	
 	#Pre-cleaning loci CHECK!!
 	#Pre-cleaning loci CHECK!!
-	cleanLoci = list(set(LociPreClean(vcf)).intersection(list(SparseD["Locus"])))
-	MildcleanLoci = list(set(LociPreClean_milds(vcf)).intersection(list(SparseD["Locus"])))
+	cleanLoci = list(set(LociPreClean(vcf)).intersection(list(Counts.loci)))
+	MildcleanLoci = list(set(LociPreClean_milds(vcf)).intersection(list(Counts.loci)))
 	
 	#Setting Loci categories
 	DiffOnlyIndex=DiffOnlyIndexMaker(vcf, cleanLoci)
@@ -77,7 +81,7 @@ def deconvolution(SparseD, vcf, GenotypesDF, outdir, LowQual):
 	DBLSpecificSingularLociDict["HeteroRef"]=DoubletSpecificSingularLociScan(vcf,GenotypesDF, cleanLoci)[3]
 	
 	
-	LikeliHoodsDF=ComputeLikelihood(vcf,GenotypesDF,SparseD,DiffOnlyIndex)
+	LikeliHoodsDF=ComputeLikelihood(vcf,GenotypesDF,Counts,DiffOnlyIndex)
 	
 	
 	BestBarcodeID=LikeliHoodsDF.idxmax(axis = 1)
@@ -85,9 +89,9 @@ def deconvolution(SparseD, vcf, GenotypesDF, outdir, LowQual):
 	BestInDropDict = defaultdict(list)
 	for key, value in BestBarcodeID.to_dict().items():
 		BestInDropDict[value].append(key)
-		
 	
-	SingularLociScoreDF = SingularLociCNTR( SingularLoci_Alt, SingularLoci_Ref, SparseD, barcodeList, GenotypesDF,vcf)
+	
+	SingularLociScoreDF = SingularLociCNTR( SingularLoci_Alt, SingularLoci_Ref, Counts, barcodeList, GenotypesDF,vcf)
 	
 	if len(ExtractSamples(vcf)) > 2:
 		DBLsDF=NoiseRregression(BestInDropDict, barcodeList, vcf, SingularLociScoreDF, BestBarcodeID)
@@ -97,7 +101,7 @@ def deconvolution(SparseD, vcf, GenotypesDF, outdir, LowQual):
 		DBLsDF = pd.DataFrame(columns = ["FirstID","SecondID"], index = list(chain(*BestInDropDict.values()))  )
 		DBLsDF.loc[BestInDropDict[ID1], ["FirstID","SecondID"]] = [ID1,ID2]
 		DBLsDF.loc[BestInDropDict[ID2], ["FirstID","SecondID"]] = [ID2,ID1]
-		
+	
 	
 	#Creation of putative DBL-to-barcode dict
 	DropToDBLDict = defaultdict(list)
@@ -106,7 +110,7 @@ def deconvolution(SparseD, vcf, GenotypesDF, outdir, LowQual):
 	for key, value in dict(zip(Barcodes_values, DBLtuples_keys)).items():
 		DropToDBLDict[value].append(key)
 	
-	DBLs_ADJ_Contributions = LowQualScore(DropToDBLDict,SparseD,DBLSpecificSingularLociDict,vcf, GenotypesDF,SingularLociScoreDF)
+	DBLs_ADJ_Contributions = LowQualScore(DropToDBLDict,Counts,DBLSpecificSingularLociDict,vcf, GenotypesDF,SingularLociScoreDF)
 	
 	#Editing DFs before concat
 	Contributions = SingularLociScoreDF[ExtractSamples(vcf)]
@@ -115,18 +119,21 @@ def deconvolution(SparseD, vcf, GenotypesDF, outdir, LowQual):
 	DBLmetricsDF = pd.concat([Contributions,DBLs_ADJ_Contributions,BestIDs], axis = 1)
 	
 	#DBLs detection Module
-	DBLsList = main__DBLsMark(DBLmetricsDF)
+	DBLsList = main__DBLsMark_wEmpty(DBLmetricsDF,FullDrops ) if emptyTraining else main__DBLsMark(DBLmetricsDF)
+	
 	
 	DBLmetricsDF["DropletType"] = "Singlet"
 	DBLmetricsDF.loc[DBLsList,"DropletType"] = "Doublet"
 	DBLmetricsDF["ID"] = DBLmetricsDF["FirstID"]
 	DBLmetricsDF.loc[DBLmetricsDF["DropletType"] == "Doublet","ID"] = "Doublet"
 	
-	if LowQual == True:
-		QualDF = main_FlagLowQual(DBLmetricsDF, DBLsList, outdir)
-		Cell_IDs = pd.concat([DBLmetricsDF, QualDF], axis = 1)
+	
+	
+	
+	if emptyTraining:
+		Cell_IDs = main_FlagLowQual_wEmpty(DBLmetricsDF, DBLsList, outdir,FullDrops,FullDropsKNNseries, HighOutlierThreshold = .95,LowOutlierThreshold = .05)
 	else:
-		Cell_IDs = DBLmetricsDF
+		Cell_IDs = main_FlagLowQual(DBLmetricsDF, DBLsList, outdir)
 		
 		
 	
