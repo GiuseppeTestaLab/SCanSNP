@@ -1,8 +1,6 @@
 # SCanSNP
-Stable version
+Version prepared for consensus
+
+## __Dependencies__
 
 
-## __Notes__
-
-- Need a way to access global variables from within function to lighten the code
-- Remove pycache!!
