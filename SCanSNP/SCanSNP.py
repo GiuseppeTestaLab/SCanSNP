@@ -2,6 +2,7 @@
 import argparse
 import os
 
+
 parser = argparse.ArgumentParser(description='Process some integers.')
 
 
@@ -40,7 +41,7 @@ if args.mode is None or args.mode == "deconvolution":
 	if args.bam is None or args.barcodes is None:
 		parser.error('please provide --bam and --barcodes')
 
-if args.raw_matrix not None:
+if args.raw_matrix is not None:
 	if args.filtered_matrix is None:
 		parser.error('If --raw_matrix_path is specified also --filtered_matrix_path must be provided')
 
@@ -52,21 +53,19 @@ barcodesFILE=args.barcodes
 nThreads=int(args.nthreads)
 outdir=args.outdir
 countpath=args.countpath
-#LowQual=args.LowQual
 rawPath=args.raw_matrix
 filteredPath=args.filtered_matrix
 
 
 #mode="deconvolution"
-#bamFile="/hpcnfs/scratch/temporary/Dav_vc/0_CellrangerAlign/Sample_S20272_157/outs/possorted_genome_bam.bam"
-#vcf="/hpcnfs/scratch/temporary/Dav_vc/2_Combining/Sample_S20273_157/output/combinedVCF/jointGenotype.g.vcf"
-#barcodesFILE="/hpcnfs/scratch/temporary/Dav_vc/0_CellrangerAlign/Sample_S20272_157/outs/filtered_feature_bc_matrix/barcodes.tsv.gz"
+#bamFile="/hpcnfs/scratch/temporary/Dav_vc/0.2_SynthII_creation/SYNTH5/Synth_Balanced_doublets/SilicoMultiplexed.dblAdded.bam"
+#vcf="/hpcnfs/scratch/temporary/Dav_vc/0.1_Synth_creation_Dav_temp/Dav/1_Subsampling/CombineVCF/output/combinedVCF/jointGenotype.g.vcf"
+#barcodesFILE="/hpcnfs/scratch/temporary/Dav_vc/0.2_SynthII_creation/SYNTH5/Synth_Balanced_doublets/Barcodes.new.tsv"
 #nThreads=10
-#outdir="/hpcnfs/scratch/temporary/Dav_vc/20.4_DemultiMatteo/temp"
-#countpath="/hpcnfs/scratch/temporary/Dav_vc/20.4_DemultiMatteo/temp/Counts.pkl"
+#outdir=None
+#countpath="/hpcnfs/scratch/temporary/Dav_vc/20.4_DemultiMatteo/scRNAseq/demultiplexing/organoidMultiplexing-ensembl_human_93/davide/SYNTH5/scansnp/Counts.pkl"
 #rawPath=None
-#filteredPath="/hpcnfs/scratch/temporary/Dav_vc/0_CellrangerAlign/Sample_S20272_157/outs/filtered_feature_bc_matrix"
-
+#filteredPath=None
 
 
 
@@ -85,6 +84,8 @@ if str(outdir).endswith('/'):
 if str(countpath).endswith('/'):
 	countpath=str(countpath)[:-1]
 
+if not os.path.exists(outdir):
+	os.mkdir(outdir)
 
 
 
@@ -141,7 +142,7 @@ if __name__ == "__main__":
 			barcodeList, vcf,
 			nThreads, bamFile)
 			
-		if rawPath not None:
+		if rawPath is not None:
 			#Save ReadCounts with emptyDrops in pickle
 			with open(outdir+ '/Counts.withEmpty.pkl', 'wb') as f:
 				pickle.dump(Counts, f, pickle.HIGHEST_PROTOCOL)

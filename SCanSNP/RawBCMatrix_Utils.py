@@ -1,18 +1,21 @@
 
-import scanpy as sc
+#import scanpy as sc
 from sklearn.neighbors import NearestNeighbors
 import anndata as ad
 from scipy.sparse import csr_matrix
 import numpy as np
+import scanpy as sc
+
 
 def UnfilteredAdataAdata(filteredPath, rawPath, outdir, nHKgenes=50, raw_to_filt_ratio=1, n_neighbors=20):
 	"""
 	RawFilt ratio is the number of raw cells per filtered to retain after the thresholded value selected from cellranger
 	KNN will scale bad, be wise...
 	"""
-	
+	print("Loading filtered and unfiltered matrices into anndata")
 	UnfilteredAdata=sc.read_10x_mtx(rawPath,var_names='gene_symbols', cache=False)
 	FilteredAdata=sc.read_10x_mtx(filteredPath,var_names='gene_symbols', cache=False)
+	print("count matrices loaded")
 	
 	#Store filtered barcodes
 	FilteredBCs = FilteredAdata.obs_names.tolist()
