@@ -19,42 +19,6 @@ import scipy.sparse
 
 
 
-# def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile):
-# 	'''
-# 	Fire-up the main Pileupper
-# 	'''
-
-# 	OmniIndex = list(set(CleanSingularLoci + DiffOnlyIndexMaker(vcf, cleanLoci) + DoubletSpecificSingularLociScan(vcf,GenotypesDF, MildcleanLoci)[0]))
-
-# 	print('Splitting Variants into chunks...')
-# 	GenotypeChunkList,GenotypeChunkIndexesList = FlattenDict(ChunkMaker(GenotypesDF, nThreads, OmniIndex))
-
-# 	print('Pileup started...')
-# 	start = time.time()
-
-# 	#FireUp main Pileupper
-# 	results = []
-# 	pool=Pool(nThreads)
-
-# 	for chunkIdx in GenotypeChunkIndexesList:
-# 		result = pool.apply_async(ReadCounter, (chunkIdx, bamFile, barcodeList,GenotypeChunkList))
-# 		results.append(result)
-
-
-# 	pool.close()
-# 	pool.join()
-
-# 	print('Pileup took', time.time()-start, 'seconds.')
-	
-# 	#Gathering rsults
-# 	Counts = {"sparse_Ref" : csr_matrix((0, len(barcodeList))), "sparse_Alt":csr_matrix((0, len(barcodeList))), "Locus" : pd.Series(),  "Barcode" : pd.Series(sorted(list(barcodeList))) }
-# 	for result in results:
-# 		Counts["sparse_Ref"] = scipy.sparse.vstack((Counts["sparse_Ref"],result.get()["sparse_Ref"]))
-# 		Counts["sparse_Alt"] = scipy.sparse.vstack((Counts["sparse_Alt"],result.get()["sparse_Alt"]))
-# 		Counts["Locus"] =  Counts["Locus"].append(result.get()["Locus"])
-		
-# 	return Counts
-
 
 def deconvolution(Counts, vcf, GenotypesDF, outdir, FullDrops, FullDropsKNNseries):
 	#CountDF reconstruction

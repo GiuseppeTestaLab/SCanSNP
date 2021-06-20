@@ -11,8 +11,13 @@ from scipy.stats import norm
 import numpy as np
 from scipy import stats
 from plots import FittedMixturePlot
+import rpy2.robjects as robjects
+from rpy2.robjects.packages import importr
+from rpy2.robjects import r, pandas2ri
+import os
 
 
+ModelFitting=os.path.join(os.path.dirname(__file__), "ModelFitting/ModelFitting.R")
 
 
 def AmbientFactorsEstimate_wEmpty(DBLmetricsDF, DBLsList, FullDrops, HighOutlierThreshold,LowOutlierThreshold):
@@ -70,43 +75,40 @@ def AddPseudoCounts_wEmpty(DBLmetricsDF, AmbientFactors, DBLsList, FullDrops):
 	return NoisedIDs
 
 
-def mixtureModel_wEmpty(NoisedIDs, outdir, DBLsList,DBLmetricsDF, HighOutlierThreshold,LowOutlierThreshold):
+def mixtureModel_wEmpty(NoisedIDs, outdir, DBLsList,DBLmetricsDF, HighOutlierThreshold ,LowOutlierThreshold ):
+	
 	NoisedIDs_processed=NoisedIDs.copy()
 	
-	NoisedIDs_processed["logFC"] = np.log(NoisedIDs_processed["Noised_FirstID_Score"].divide(NoisedIDs_processed["Noised_SecondID_Score"]))
-	#Marking low and high outliers as bonafitr LowQual and GoodQual
-	SafeLowQual = NoisedIDs_processed[NoisedIDs_processed["logFC"] <= NoisedIDs_processed["logFC"].quantile(LowOutlierThreshold)].index.tolist()
-	SafeGoodQual = NoisedIDs_processed[NoisedIDs_processed["logFC"] >= NoisedIDs_processed["logFC"].quantile(HighOutlierThreshold)].index.tolist()
-	# Fit mixModel on non-outliers
-	NoisedIDs_processed = NoisedIDs_processed[(NoisedIDs_processed["logFC"] < NoisedIDs_processed["logFC"].quantile(HighOutlierThreshold)) & (NoisedIDs_processed["logFC"] > NoisedIDs_processed["logFC"].quantile(LowOutlierThreshold))]
-	gm = GaussianMixture(n_components=2, random_state=0, weights_init = [.05,.95]).fit(NoisedIDs_processed["logFC"].to_numpy().reshape(-1,1))
-	QualLabels = gm.predict(NoisedIDs_processed["logFC"].to_numpy().reshape(-1,1))
+	pandas2ri.activate()
+	r=robjects.r
+	r.source(ModelFitting)
 	
-	#Plot Fitting
-	FittedMixturePlot(gm, outdir, NoisedIDs_processed)
+	QualDF=r.ModelFitting(robjects.conversion.py2rpy(NoisedIDs_processed), outdir, HighOutlierThreshold, LowOutlierThreshold)
 	
-	#Flagging lowquals
-	QualFlag = np.where(QualLabels==gm.means_.argmax(), "GoodQuality", "LowQuality")
-	QualDF=pd.DataFrame(QualFlag, index = NoisedIDs_processed.index, columns = ["Quality"])
-	
-	SafeLowQual = pd.DataFrame(["LowQuality" for x in range(len(SafeLowQual))], index = SafeLowQual, columns = ["Quality"])
-	SafeGoodQual = pd.DataFrame(["GoodQuality" for x in range(len(SafeGoodQual))], index = SafeGoodQual, columns = ["Quality"])
 	Doublets = pd.DataFrame(["Doublet" for x in range(len(DBLsList))], index = DBLsList, columns = ["Quality"])
 	
-	return QualDF,SafeLowQual,SafeGoodQual,Doublets
+	QualDF = pd.concat([QualDF, Doublets])
+	
+	return QualDF
 
 
-def intersectKNNs(QualDF,SafeLowQual,SafeGoodQual,Doublets,FullDropsKNNseries,DBLmetricsDF, FullDrops):
+
+
+
+
+
+def intersectKNNs(QualDF,Doublets,FullDropsKNNseries,DBLmetricsDF, FullDrops):
 	DBLmetricsDF_Full = DBLmetricsDF.loc[DBLmetricsDF.index.isin(FullDrops)]
 	
 	
 	QualDF_KNN = pd.concat([QualDF,FullDropsKNNseries.loc[QualDF.index]], axis =1)
 	QualDF_KNN.loc[(QualDF_KNN["Quality"] == "LowQuality")  &  (QualDF_KNN["FullDropsKNN"] <= 0.5),"Final_Quality"] = "LowQuality"
+	QualDF_KNN.loc[QualDF_KNN["Quality"] == "Doublet", "Final_Quality"] = "Doublet"
 	
 	QualDF_KNN.Quality = QualDF_KNN.Final_Quality.fillna("GoodQuality")
 	
 	
-	Cell_IDs = pd.concat([DBLmetricsDF_Full, (pd.concat([QualDF_KNN["Quality"].to_frame(), SafeLowQual,SafeGoodQual,Doublets]))], axis = 1)
+	Cell_IDs = pd.concat([DBLmetricsDF_Full, (pd.concat([QualDF_KNN["Quality"].to_frame()   ]))], axis = 1)
 	
 	return Cell_IDs
 
@@ -114,10 +116,12 @@ def intersectKNNs(QualDF,SafeLowQual,SafeGoodQual,Doublets,FullDropsKNNseries,DB
 
 
 def main_FlagLowQual_wEmpty(DBLmetricsDF, DBLsList, outdir,FullDrops,FullDropsKNNseries, HighOutlierThreshold = .95,LowOutlierThreshold = .05):
-	AmbientFactors = AmbientFactorsEstimate_wEmpty(DBLmetricsDF, DBLsList, FullDrops, HighOutlierThreshold,LowOutlierThreshold)
+	AmbientFactors = AmbientFactorsEstimate_wEmpty(DBLmetricsDF, DBLsList, FullDrops, HighOutlierThreshold = .95,LowOutlierThreshold= .95)
 	NoisedIDs = AddPseudoCounts_wEmpty(DBLmetricsDF, AmbientFactors, DBLsList, FullDrops)
-	QualDF,SafeLowQual,SafeGoodQual,Doublets = mixtureModel_wEmpty(NoisedIDs, outdir, DBLsList,DBLmetricsDF, HighOutlierThreshold,LowOutlierThreshold)
-	Cell_IDs = intersectKNNs(QualDF,SafeLowQual,SafeGoodQual,Doublets,FullDropsKNNseries,DBLmetricsDF, FullDrops)
+	
+	QualDF = mixtureModel_wEmpty(NoisedIDs, outdir, DBLsList,DBLmetricsDF, HighOutlierThreshold = .99,LowOutlierThreshold = .01)
+	
+	Cell_IDs = intersectKNNs(QualDF,Doublets,FullDropsKNNseries,DBLmetricsDF, FullDrops)
 	
 	return Cell_IDs
 
