@@ -5,6 +5,7 @@ from DBLsutils import *
 from Pileup import *
 from scipy.sparse import csr_matrix
 import copy
+import anndata as ad
 
 #from Wrappers import *
 
@@ -75,6 +76,7 @@ class CountData:
 		self.sparseAlt = sparseAlt
 		self.loci = loci
 		self.barcodes = barcodes
+		
 	
 	def copy(self):
 		return copy.copy(self)
@@ -110,19 +112,14 @@ class CountData:
 			SGenotypes =None
 		
 		return slicedCounts, SGenotypes
+	
+	def write_h5ad(self, writepath=None):
+		varAdata = ad.AnnData(X=self.sparseRef.T)
+		varAdata.obs_names = self.barcodes.tolist()
+		varAdata.var_names = self.loci.tolist()
+		varAdata.layers["RefReads"] = self.sparseRef.T
+		varAdata.layers["AltReads"] = self.sparseAlt.T
+		varAdata.write_h5ad(writepath)
+		
+		return None
 
-
-
-# CountData())
-
-
-# test=CountData(SparseD["sparse_Ref"],SparseD["sparse_Alt"],SparseD["Locus"],SparseD["Barcode"])
-
-
-# test.slice(barcodeList=["TTTGTCATCGTTTATC-1"], lociList=["10_101580387"], Genotypes=GenotypesDF)
-
-# test2,sGenotypes = test.slice(barcodeList=["TTTGTCATCGTTTATC-1"], lociList=["10_101580387"], Genotypes=GenotypesDF)
-
-
-
-# test

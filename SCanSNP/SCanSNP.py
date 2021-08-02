@@ -12,7 +12,7 @@ parser.add_argument('--barcodes', dest='barcodes', help='for matrixgen mode: FIL
 
 #conditionally optionals
 parser.add_argument('--bam', dest='bam', help='for matrixgen mode: BAM file of mixed genotypes',type=str)
-parser.add_argument('--pickle', dest='countpath',type=str,help='for deconvolution mode: path to folder containing Counts.npz countBarcodes.tsv and countLoci.tsv')
+parser.add_argument('--counts', dest='countpath',type=str,help='pre-calculated anndata.h5ad with var counts:  adata.layers["RefReads"] and adata.layers["AltReads"]')
 parser.add_argument('--filtered_matrix_path', dest='filtered_matrix', help='path/to/cellranger/filtered/matrix/',default=None,type=str)
 
 
@@ -23,9 +23,15 @@ parser.add_argument('--outdir', dest='outdir', help='use',default="currentwd",ty
 #parser.add_argument('--flagLowQual', dest='LowQual', help='Force-fit GMM to flag lowquality droplets',default=False,type=bool)
 parser.add_argument('--mode', dest='mode', default="deconvolution",
 	required=False,
-	choices=["matrixgen","deconvolution","skipcount"],
+	choices=["matrixgen","deconvolution","skipcount","pileup"],
 	type=str,
 	help='creating pileup matrix with ref and alt supporting reads')
+
+parser.add_argument('--platform', dest='platform', default="chromium",
+	required=False,
+	choices=["chromium","visium"],
+	type=str,
+	help='select the library platform')
 
 args = parser.parse_args()
 
@@ -35,7 +41,7 @@ if args.mode == "matrixgen":
 
 if args.mode == "skipcount":
 	if args.countpath is None:
-		parser.error('please provide path to Counts.pkl using --pickle for skipcount mode')
+		parser.error('please provide path to anndata.h5ad using --pickle for skipcount mode')
 
 if args.mode is None or args.mode == "deconvolution":
 	if args.bam is None or args.barcodes is None:
@@ -57,12 +63,12 @@ rawPath=args.raw_matrix
 filteredPath=args.filtered_matrix
 
 
-#mode="deconvolution"
-#bamFile="/hpcnfs/scratch/temporary/Dav_vc/0.2_SynthII_creation/SYNTH5/Synth_Balanced_doublets/SilicoMultiplexed.dblAdded.bam"
-#vcf="/hpcnfs/scratch/temporary/Dav_vc/0.1_Synth_creation_Dav_temp/Dav/1_Subsampling/CombineVCF/output/combinedVCF/jointGenotype.g.vcf"
-#barcodesFILE="/hpcnfs/scratch/temporary/Dav_vc/0.2_SynthII_creation/SYNTH5/Synth_Balanced_doublets/Barcodes.new.tsv"
-#nThreads=10
-#outdir=None
+#mode="matrixgen"
+#bamFile="/group/testa/Users/davide.castaldi/lymph_node_lymphoma_14k_gex_possorted_bam.rmDup.bam"
+#vcf="/home/davide.castaldi/projects/scMultiomeData/gex_vc/parsed.VCF"
+#barcodesFILE="/home/davide.castaldi/projects/scMultiomeData/filtered_feature_bc_matrix/barcodes.tsv.gz"
+#nThreads=20
+#outdir="/home/davide.castaldi/projects/scMultiomeData/gex_vc/"
 #countpath="/hpcnfs/scratch/temporary/Dav_vc/20.4_DemultiMatteo/scRNAseq/demultiplexing/organoidMultiplexing-ensembl_human_93/davide/SYNTH5/scansnp/Counts.pkl"
 #rawPath=None
 #filteredPath=None
@@ -103,8 +109,10 @@ from collections import Counter
 from sklearn.linear_model import LogisticRegression
 import scipy
 import pickle
+import anndata as ad
+import scanpy as sc
 
-#sys.path.append('/hpcnfs/scratch/temporary/Dav_vc/20.4_DemultiMatteo/SCanSNP_V1_ssh_EmptyFit/SCanSNP/SCanSNP/')
+#sys.path.append('/home/davide.castaldi/git/SCanSNP/SCanSNP')
 
 from VCFUtils import *
 from Wrappers import *
@@ -143,30 +151,28 @@ if __name__ == "__main__":
 			nThreads, bamFile)
 			
 		if rawPath is not None:
-			#Save ReadCounts with emptyDrops in pickle
-			with open(outdir+ '/Counts.withEmpty.pkl', 'wb') as f:
-				pickle.dump(Counts, f, pickle.HIGHEST_PROTOCOL)
-			#Save ReadCounts without emptyDrops in pickle
-			with open(outdir+ '/Counts.pkl', 'wb') as f:
-				pickle.dump(Counts.slice(barcodeList = FullDrops)[0], f, pickle.HIGHEST_PROTOCOL)
+			#Save ReadCounts with emptyDrops in Anndata
+			Counts.write_h5ad(outdir+'/varAdata.h5ad')	
+			#Save ReadCounts without emptyDrops in Anndata
+			Counts.slice(barcodeList = FullDrops)[0].write_h5ad(outdir+'/varAdata.h5ad')
 		else:
-			#Save ReadCounts without emptyDrops in pickle
-			with open(outdir+ '/Counts.pkl', 'wb') as f:
-				pickle.dump(Counts, f, pickle.HIGHEST_PROTOCOL)
+			#Save ReadCounts without emptyDrops in Anndata
+			Counts.write_h5ad(outdir+'/varAdata.h5ad')
 	
 	elif mode == "skipcount":
 		'''
 		Performing only deconvolution based on provided counts
 		'''
 		#Load existing counts
-		with open(str(countpath), 'rb') as f:
-			Counts = pickle.load(f)
+		varAdata = sc.read_h5ad(countpath)
+		Counts = CountData(varAdata.layers["sparse_Ref"], varAdata.layers["sparse_Alt"], varAdata.var_names, varAdata.obs_names)
+		del varAdata
 		#Deconvolution
 		Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries)
 		Cell_IDs.to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True, index_label = "barcode")
 		
 		
-	else:
+	elif mode == "deconvolution":
 		'''
 		Perform both count and ceconvolution
 		'''
@@ -176,19 +182,31 @@ if __name__ == "__main__":
 			barcodeList, vcf,
 			nThreads, bamFile)
 		
-		#Save ReadCounts in pickle
+		#Save ReadCounts in Anndata
 		if rawPath is not None:
-			#Save ReadCounts with emptyDrops in pickle
-			with open(outdir+ '/Counts.withEmpty.pkl', 'wb') as f:
-				pickle.dump(Counts, f, pickle.HIGHEST_PROTOCOL)
-			#Save ReadCounts without emptyDrops in pickle
-			with open(outdir+ '/Counts.pkl', 'wb') as f:
-				pickle.dump(Counts.slice(barcodeList = FullDrops)[0], f, pickle.HIGHEST_PROTOCOL)
+			#Save ReadCounts with emptyDrops in Anndata
+			Counts.write_h5ad(outdir+'/varAdata.h5ad')	
+			#Save ReadCounts without emptyDrops in Anndata
+			Counts.slice(barcodeList = FullDrops)[0].write_h5ad(outdir+'/varAdata.h5ad')
 		else:
-			#Save ReadCounts without emptyDrops in pickle
-			with open(outdir+ '/Counts.pkl', 'wb') as f:
-				pickle.dump(Counts, f, pickle.HIGHEST_PROTOCOL)
+			#Save ReadCounts without emptyDrops in Anndata
+			Counts.write_h5ad(outdir+'/varAdata.h5ad')
 		
 		#Deconvolution
 		Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries)
 		Cell_IDs.to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True, index_label = "barcode")
+
+	elif mode == "pileup":
+		'''
+		Performing only count on provided loci list, this mode does not assume multi sample VCF file.
+		'''
+		Counts = CountsPileup(MildcleanLoci, GenotypesDF,barcodeList, vcf,nThreads, bamFile)
+			
+		if rawPath is not None:
+			#Save ReadCounts with emptyDrops in Anndata
+			Counts.write_h5ad(outdir+'/varAdata.h5ad')	
+			#Save ReadCounts without emptyDrops in Anndata
+			Counts.slice(barcodeList = FullDrops)[0].write_h5ad(outdir+'/varAdata.h5ad')
+		else:
+			#Save ReadCounts without emptyDrops in Anndata
+			Counts.write_h5ad(outdir+'/varAdata.h5ad')
