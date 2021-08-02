@@ -71,10 +71,6 @@ def Pileupper(bam, locus, lastPos, BarcodeSet, readList, bannedFlag=3844, mapQua
 			position = read.positions.index(int(locus[1]) - 1)
 		except:
 			continue
-		try:
-			UB=read.get_tag("UB")
-		except:
-			continue
 		if read.query_alignment_qualities[position] < 20:
 			continue
 		if read.is_secondary:

@@ -64,11 +64,11 @@ filteredPath=args.filtered_matrix
 
 
 #mode="matrixgen"
-#bamFile="/group/testa/Users/davide.castaldi/lymph_node_lymphoma_14k_gex_possorted_bam.rmDup.bam"
-#vcf="/home/davide.castaldi/projects/scMultiomeData/gex_vc/parsed.VCF"
+#bamFile="/group/testa/Users/davide.castaldi/lymph_node_lymphoma_14k_atac_possorted_bam.rmDup.bam"
+#vcf="/home/davide.castaldi/projects/scMultiomeData/atac_vc/parsed.VCF"
 #barcodesFILE="/home/davide.castaldi/projects/scMultiomeData/filtered_feature_bc_matrix/barcodes.tsv.gz"
 #nThreads=20
-#outdir="/home/davide.castaldi/projects/scMultiomeData/gex_vc/"
+#outdir="/home/davide.castaldi/projects/scMultiomeData/atac_vc/"
 #countpath="/hpcnfs/scratch/temporary/Dav_vc/20.4_DemultiMatteo/scRNAseq/demultiplexing/organoidMultiplexing-ensembl_human_93/davide/SYNTH5/scansnp/Counts.pkl"
 #rawPath=None
 #filteredPath=None
