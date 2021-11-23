@@ -19,6 +19,8 @@ parser.add_argument('--filtered_matrix_path', dest='filtered_matrix', help='path
 #Optionals
 parser.add_argument('--threads', dest='nthreads', help='threads to be used',default=10,type=str)
 parser.add_argument('--raw_matrix_path', dest='raw_matrix', help='path/to/cellranger/unfiltered/matrix/',default=None,type=str)
+parser.add_argument('--umitag', dest='umitag', help='tag in the bam file for UMI',default="UB",type=str)
+parser.add_argument('--celltag', dest='barcodetag', help='tag in the bam file for cells',default="CB",type=str)
 parser.add_argument('--outdir', dest='outdir', help='use',default="currentwd",type=str)
 #parser.add_argument('--flagLowQual', dest='LowQual', help='Force-fit GMM to flag lowquality droplets',default=False,type=bool)
 parser.add_argument('--mode', dest='mode', default="deconvolution",
@@ -61,7 +63,8 @@ outdir=args.outdir
 countpath=args.countpath
 rawPath=args.raw_matrix
 filteredPath=args.filtered_matrix
-
+barcodetag=args.barcodetag
+umitag=args.umitag
 
 #mode="matrixgen"
 #bamFile="/group/testa/Users/davide.castaldi/lymph_node_lymphoma_14k_atac_possorted_bam.rmDup.bam"
@@ -125,7 +128,7 @@ if __name__ == "__main__":
 	MildcleanLoci = LociPreClean_milds(vcf)
 	CleanSingularLoci,SingularLoci_Alt,SingularLoci_Ref = SingularLociSCan(vcf,cleanLoci)
 	
-	FullDrops = pd.read_csv(barcodesFILE, header=None, names=["b"])["b"].tolist()
+	FullDrops = pd.read_csv(barcodesFILE, header=None, names=["b"])["b"].astype("string").tolist()
 	
 	#If raw counts cellranger matrix is provided launch RawBCMatrix module
 	if rawPath is not None:
@@ -148,7 +151,7 @@ if __name__ == "__main__":
 		Counts = CountsMatrices(CleanSingularLoci, cleanLoci,
 			MildcleanLoci, GenotypesDF,
 			barcodeList, vcf,
-			nThreads, bamFile)
+			nThreads, bamFile , barcodetag, umitag)
 			
 		if rawPath is not None:
 			#Save ReadCounts with emptyDrops in Anndata
@@ -180,7 +183,7 @@ if __name__ == "__main__":
 		Counts = CountsMatrices(CleanSingularLoci, cleanLoci,
 			MildcleanLoci, GenotypesDF,
 			barcodeList, vcf,
-			nThreads, bamFile)
+			nThreads, bamFile , barcodetag, umitag)
 		
 		#Save ReadCounts in Anndata
 		if rawPath is not None:
@@ -198,9 +201,9 @@ if __name__ == "__main__":
 
 	elif mode == "pileup":
 		'''
-		Performing only count on provided loci list, this mode does not assume multi sample VCF file.
+		Performing only count on provided loci list, this mode assumes single-sample VCF file.
 		'''
-		Counts = CountsPileup(MildcleanLoci, GenotypesDF,barcodeList, vcf,nThreads, bamFile)
+		Counts = CountsPileup(MildcleanLoci, GenotypesDF,barcodeList, vcf,nThreads, bamFile, barcodetag, umitag)
 			
 		if rawPath is not None:
 			#Save ReadCounts with emptyDrops in Anndata

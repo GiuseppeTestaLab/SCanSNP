@@ -30,7 +30,7 @@ from itertools import chain
 
 
 
-def ReadCounter(chunkIdx, bamFile, barcodeList, GenotypeChunkList):
+def ReadCounter(chunkIdx, bamFile, barcodeList, GenotypeChunkList, barcodetag, umitag):
 	bam=pysam.AlignmentFile(bamFile, "rb")
 	BarcodeSet=set(barcodeList)
 	readList = []
@@ -40,7 +40,7 @@ def ReadCounter(chunkIdx, bamFile, barcodeList, GenotypeChunkList):
 		
 		locus = GenotypeChunkList[indexPos]
 		
-		readList=Pileupper(bam, locus, lastPos,BarcodeSet, readList)
+		readList=Pileupper(bam, locus, lastPos,BarcodeSet, readList,barcodetag, umitag)
 		
 		if sys.getsizeof(readList) >= 30000000 or indexPos == lastPos:
 			try:
@@ -57,12 +57,13 @@ def ReadCounter(chunkIdx, bamFile, barcodeList, GenotypeChunkList):
 
 
 
-def Pileupper(bam, locus, lastPos, BarcodeSet, readList, bannedFlag=3844, mapQuality=2, baseQuality=20 , readLength=30):
+def Pileupper(bam, locus, lastPos, BarcodeSet, readList, barcodetag, umitag, bannedFlag=3844, mapQuality=2, baseQuality=20 , readLength=30):
 	##!!! Accessing readList "fake global" because of diverse GIL spawned for childs<<<<
+	# UMItag not used in this version
 	for read in bam.fetch(locus[0], locus[1]-1, locus[1]):
 	#Check for position coverage
 		try:
-			CB=read.get_tag("CB")
+			CB=read.get_tag(barcodetag)
 		except:
 			continue
 		if not set([CB]).intersection(BarcodeSet):
@@ -121,7 +122,7 @@ def DFMaker(readList, barcodeList):
 
 
 
-def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile):
+def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile, barcodetag, umitag):
 	'''
 	Fire-up the main Pileupper
 	'''
@@ -139,7 +140,7 @@ def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, bar
 	pool=Pool(nThreads)
 
 	for chunkIdx in GenotypeChunkIndexesList:
-		result = pool.apply_async(ReadCounter, (chunkIdx, bamFile, barcodeList,GenotypeChunkList))
+		result = pool.apply_async(ReadCounter, (chunkIdx, bamFile, barcodeList,GenotypeChunkList,barcodetag, umitag))
 		results.append(result)
 
 
@@ -162,7 +163,7 @@ def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, bar
 	
 
 
-def CountsPileup(MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile):
+def CountsPileup(MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile,barcodetag, umitag):
 	'''
 	Fire-up the main Pileupper assuming 1 only ID in VCF i.e. sc pileup over list of loci
 	'''
@@ -178,7 +179,7 @@ def CountsPileup(MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile):
 	pool=Pool(nThreads)
 
 	for chunkIdx in GenotypeChunkIndexesList:
-		result = pool.apply_async(ReadCounter, (chunkIdx, bamFile, barcodeList,GenotypeChunkList))
+		result = pool.apply_async(ReadCounter, (chunkIdx, bamFile, barcodeList,GenotypeChunkList, barcodetag, umitag))
 		results.append(result)
 
 
