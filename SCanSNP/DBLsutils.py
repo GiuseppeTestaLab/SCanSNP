@@ -73,23 +73,21 @@ def NoiseRregression(BestInDropDict, barcodeList, vcf, SingularLociScoreDF, Best
 		BestIDSlice["FirstID"] = FirstID
 		# if the first Id is unique than the training set is empty
 		# we use the likelihood dataframe to select the second best ID
+		# we use the likelihood dataframe to select the second best ID
 		if TrainingSet.shape[0] == 0:
 			print('Warning: only one BestId detected in the whole dataset, check whether you data are truly multiplexed')
 			print('Setting SecondID as the ID with second higher total contribution')
-
 			BestIDList = []
-			for row in range(LikeliHoodsDF.shape[0]):
-				SecondBest = LikeliHoodsDF.iloc[row , LikeliHoodsDF.columns != LikeliHoodsDF.iloc[row, :].idxmax(axis = 1)].idxmax(axis = 2)
+			LikeliHoodsDFSS=LikeliHoodsDF.loc[BestInDropDict[FirstID]]
+			for row in range(LikeliHoodsDFSS.shape[0]):
+				SecondBest = LikeliHoodsDFSS.iloc[row , LikeliHoodsDFSS.columns != LikeliHoodsDFSS.iloc[row, :].idxmax(axis = 1)].idxmax(axis = 2)
 				BestIDList.append(SecondBest)
-			BestIDSeries = pd.Series(BestIDList, index = LikeliHoodsDF.index)
+			BestIDSeries = pd.Series(BestIDList, index = LikeliHoodsDFSS.index)
 			ClassPredictionFrame = BestIDSeries.to_frame(name = 'SecondID')
-		
 		elif len(TrainingSet["BestID"].unique()) > 1:
-			
 			FittedModel = LogReg.fit(TrainingSet.iloc[:,:-1],TrainingSet.iloc[:,-1])
 			ClassPrediction = FittedModel.predict(PredictSet)
 			ClassPredictionFrame = pd.Series(ClassPrediction, index = BestIDSlice.index).to_frame(name = "SecondID")
-		
 		else:
 			print('Warning: only two IDs detected in the dataset, it was not possible to train a model for the computation of the SecondID.')
 			print('Setting SecondID as the identity that is not the BestID')

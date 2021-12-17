@@ -65,8 +65,10 @@ rawPath=args.raw_matrix
 filteredPath=args.filtered_matrix
 barcodetag=args.barcodetag
 umitag=args.umitag
+platform=args.platform
 
-#mode="matrixgen"
+#mode="deconvolution"
+#platform="visium"
 #bamFile="/group/testa/Users/davide.castaldi/lymph_node_lymphoma_14k_atac_possorted_bam.rmDup.bam"
 #vcf="/home/davide.castaldi/projects/scMultiomeData/atac_vc/parsed.VCF"
 #barcodesFILE="/home/davide.castaldi/projects/scMultiomeData/filtered_feature_bc_matrix/barcodes.tsv.gz"
@@ -171,7 +173,7 @@ if __name__ == "__main__":
 		Counts = CountData(varAdata.layers["sparse_Ref"], varAdata.layers["sparse_Alt"], varAdata.var_names, varAdata.obs_names)
 		del varAdata
 		#Deconvolution
-		Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries)
+		Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries, platform)
 		Cell_IDs.to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True, index_label = "barcode")
 		
 		
@@ -196,7 +198,7 @@ if __name__ == "__main__":
 			Counts.write_h5ad(outdir+'/varAdata.h5ad')
 		
 		#Deconvolution
-		Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries)
+		Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries, platform)
 		Cell_IDs.to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True, index_label = "barcode")
 
 	elif mode == "pileup":

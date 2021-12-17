@@ -20,7 +20,7 @@ import scipy.sparse
 
 
 
-def deconvolution(Counts, vcf, GenotypesDF, outdir, FullDrops, FullDropsKNNseries):
+def deconvolution(Counts, vcf, GenotypesDF, outdir, FullDrops, FullDropsKNNseries, platform):
 	#CountDF reconstruction
 	# SparseCounts=scipy.sparse.load_npz(str(countpath) + '/Counts.npz')
 	# Barcodes=pd.read_csv(str(countpath) + '/countBarcodes.tsv', header=None, names=["barcodes"])
