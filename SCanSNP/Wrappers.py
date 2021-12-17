@@ -58,7 +58,7 @@ def deconvolution(Counts, vcf, GenotypesDF, outdir, FullDrops, FullDropsKNNserie
 	SingularLociScoreDF = SingularLociCNTR( SingularLoci_Alt, SingularLoci_Ref, Counts, barcodeList, GenotypesDF,vcf)
 	
 	if len(ExtractSamples(vcf)) > 2:
-		DBLsDF=NoiseRregression(BestInDropDict, barcodeList, vcf, SingularLociScoreDF, BestBarcodeID)
+		DBLsDF=NoiseRregression(BestInDropDict, barcodeList, vcf, SingularLociScoreDF, BestBarcodeID, LikeliHoodsDF)
 	else:
 		ID1 = list(BestInDropDict.keys())[0]
 		ID2 = list(BestInDropDict.keys())[1]
@@ -82,24 +82,19 @@ def deconvolution(Counts, vcf, GenotypesDF, outdir, FullDrops, FullDropsKNNserie
 	
 	DBLmetricsDF = pd.concat([Contributions,DBLs_ADJ_Contributions,BestIDs], axis = 1)
 	
-	#DBLs detection Module
-	DBLsList = main__DBLsMark_wEmpty(DBLmetricsDF,FullDrops ) if emptyTraining else main__DBLsMark(DBLmetricsDF)
-	
-	
-	DBLmetricsDF["DropletType"] = "Singlet"
-	DBLmetricsDF.loc[DBLsList,"DropletType"] = "Doublet"
-	DBLmetricsDF["ID"] = DBLmetricsDF["FirstID"]
-	DBLmetricsDF.loc[DBLmetricsDF["DropletType"] == "Doublet","ID"] = "Doublet"
-	
-	
-	
-	
-	if emptyTraining:
-		Cell_IDs = main_FlagLowQual_wEmpty(DBLmetricsDF, DBLsList, outdir,FullDrops,FullDropsKNNseries, HighOutlierThreshold = .95,LowOutlierThreshold = .05)
-	else:
-		Cell_IDs = main_FlagLowQual(DBLmetricsDF, DBLsList, outdir)
+	if platform == "chromium":
+		#DBLs detection Module
+		DBLsList = main__DBLsMark_wEmpty(DBLmetricsDF,FullDrops ) if emptyTraining else main__DBLsMark(DBLmetricsDF)
+		DBLmetricsDF["DropletType"] = "Singlet"
+		DBLmetricsDF.loc[DBLsList,"DropletType"] = "Doublet"
+		DBLmetricsDF["ID"] = DBLmetricsDF["FirstID"]
+		DBLmetricsDF.loc[DBLmetricsDF["DropletType"] == "Doublet","ID"] = "Doublet"
+		if emptyTraining:
+			Cell_IDs = main_FlagLowQual_wEmpty(DBLmetricsDF, DBLsList, outdir,FullDrops,FullDropsKNNseries, HighOutlierThreshold = .95,LowOutlierThreshold = .05)
+		else:
+			Cell_IDs = main_FlagLowQual(DBLmetricsDF, DBLsList, outdir)	
+		#pd.concat([Contributions,DBLsContributions,BestIDs], axis = 1).to_csv(writePath + "/DBLmetricsDF.tsv", sep = "\t", header = True, index = True)
+	elif platform == "visium":
+		Cell_IDs = DBLmetricsDF
 		
-		
-	
-	#pd.concat([Contributions,DBLsContributions,BestIDs], axis = 1).to_csv(writePath + "/DBLmetricsDF.tsv", sep = "\t", header = True, index = True)
 	return Cell_IDs

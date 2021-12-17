@@ -58,20 +58,46 @@ def DoubletSpecificSingularLociScan(vcf,GenotypesDF, cleanLoci):
 	return SNGLociList,DBLSpecificSingularLociHomoz,DBLSpecificSingularLociHeteroAlt,DBLSpecificSingularLociHeteroRef
 
 
-def NoiseRregression(BestInDropDict, barcodeList, vcf, SingularLociScoreDF, BestID):
+def NoiseRregression(BestInDropDict, barcodeList, vcf, SingularLociScoreDF, BestID, LikeliHoodsDF):
 	LogReg = LogisticRegression(multi_class = "multinomial", solver =  "newton-cg", max_iter=100000, penalty = "l2" )
 	DBLsDF = pd.DataFrame()
 	NotNormScore = SingularLociScoreDF[ExtractSamples(vcf)]
 	for FirstID in list(BestInDropDict.keys()):
+		print(FirstID)
+		print(len(BestInDropDict[FirstID]))
 		BestIDSlice = NotNormScore.loc[BestInDropDict[FirstID]]
 		PredictSet = NotNormScore.loc[BestInDropDict[FirstID],list(set(ExtractSamples(vcf)) - set([FirstID]))]
 		TrainingSet = NotNormScore.loc[list(set(barcodeList) - set(BestInDropDict[FirstID])),list(set(ExtractSamples(vcf)) - set([FirstID]))]
 		TrainingSet["BestID"] = BestID.loc[list(set(barcodeList ) - set(BestInDropDict[FirstID]))]
 		TrainingSet = TrainingSet[TrainingSet.sum(axis = 1) > 0]
-		FittedModel = LogReg.fit(TrainingSet.iloc[:,:-1],TrainingSet.iloc[:,-1])
-		ClassPrediction = FittedModel.predict(PredictSet)
-		ClassPredictionFrame = pd.Series(ClassPrediction, index = BestIDSlice.index).to_frame(name = "SecondID")
 		BestIDSlice["FirstID"] = FirstID
-		BestIDSlice = pd.concat([BestIDSlice, ClassPredictionFrame], axis = 1)
+		# if the first Id is unique than the training set is empty
+		# we use the likelihood dataframe to select the second best ID
+		if TrainingSet.shape[0] == 0:
+			print('Warning: only one BestId detected in the whole dataset, check whether you data are truly multiplexed')
+			print('Setting SecondID as the ID with second higher total contribution')
+
+			BestIDList = []
+			for row in range(LikeliHoodsDF.shape[0]):
+				SecondBest = LikeliHoodsDF.iloc[row , LikeliHoodsDF.columns != LikeliHoodsDF.iloc[row, :].idxmax(axis = 1)].idxmax(axis = 2)
+				BestIDList.append(SecondBest)
+			BestIDSeries = pd.Series(BestIDList, index = LikeliHoodsDF.index)
+			ClassPredictionFrame = BestIDSeries.to_frame(name = 'SecondID')
+		
+		elif len(TrainingSet["BestID"].unique()) > 1:
+			
+			FittedModel = LogReg.fit(TrainingSet.iloc[:,:-1],TrainingSet.iloc[:,-1])
+			ClassPrediction = FittedModel.predict(PredictSet)
+			ClassPredictionFrame = pd.Series(ClassPrediction, index = BestIDSlice.index).to_frame(name = "SecondID")
+		
+		else:
+			print('Warning: only two IDs detected in the dataset, it was not possible to train a model for the computation of the SecondID.')
+			print('Setting SecondID as the identity that is not the BestID')
+			#TrainingSet["BestID"].unique()[0]
+			ClassPredictionFrame = pd.DataFrame(TrainingSet["BestID"].unique()[0], columns = ["SecondID"], index = BestIDSlice.index)
+		
+		BestIDSlice= pd.concat([BestIDSlice, ClassPredictionFrame], axis = 1)
+		
 		DBLsDF = pd.concat([DBLsDF, BestIDSlice], axis = 0)
+	
 	return DBLsDF[["FirstID","SecondID"]]
