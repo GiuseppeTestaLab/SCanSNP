@@ -16,15 +16,17 @@ from dblsMark import *
 from dblsMark_wEmpty import *
 from itertools import chain
 import scipy.sparse
+from classifyUtils import *
 
 
 
-
-def deconvolution(Counts, vcf, GenotypesDF, outdir, FullDrops, FullDropsKNNseries, platform):
+def deconvolution(Counts, vcf, GenotypesDF, outdir, FullDrops, FullDropsKNNseries, platform, segmentation):
 	#CountDF reconstruction
 	# SparseCounts=scipy.sparse.load_npz(str(countpath) + '/Counts.npz')
 	# Barcodes=pd.read_csv(str(countpath) + '/countBarcodes.tsv', header=None, names=["barcodes"])
 	# Loci=pd.read_csv(str(countpath) + '/countLoci.tsv', header=None, names=["loci"])
+
+	pd.read_csv("/group/testa/Project/PGCLC/multiSEQ_playground_2/segmentationDF.tsv", names=["segmentation"], sep="\t")
 	
 	emptyTraining = True if len(FullDrops) < len(Counts.barcodes) else False
 	
@@ -95,6 +97,11 @@ def deconvolution(Counts, vcf, GenotypesDF, outdir, FullDrops, FullDropsKNNserie
 			Cell_IDs = main_FlagLowQual(DBLmetricsDF, DBLsList, outdir)	
 		#pd.concat([Contributions,DBLsContributions,BestIDs], axis = 1).to_csv(writePath + "/DBLmetricsDF.tsv", sep = "\t", header = True, index = True)
 	elif platform == "visium":
-		Cell_IDs = DBLmetricsDF
+		if segmentation is None:
+			Cell_IDs = DBLmetricsDF
+		else:
+			segmentationDF = pd.read_csv(segmentation, names=["segmentation"], sep="\t")
+			SegmentationClassified = barcodeClassifier_main(DBLmetricsDF, segmentationDF)
+			Cell_IDs = pd.concat([DBLmetricsDF,SegmentationClassified], axis = 1)
 		
 	return Cell_IDs

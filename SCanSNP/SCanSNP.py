@@ -21,6 +21,7 @@ parser.add_argument('--threads', dest='nthreads', help='threads to be used',defa
 parser.add_argument('--raw_matrix_path', dest='raw_matrix', help='path/to/cellranger/unfiltered/matrix/',default=None,type=str)
 parser.add_argument('--umitag', dest='umitag', help='tag in the bam file for UMI',default="UB",type=str)
 parser.add_argument('--celltag', dest='barcodetag', help='tag in the bam file for cells',default="CB",type=str)
+parser.add_argument('--segmentation', dest='segmentation', help='tsv with barcode-nuclei information',default=None,type=str)
 parser.add_argument('--outdir', dest='outdir', help='use',default="currentwd",type=str)
 #parser.add_argument('--flagLowQual', dest='LowQual', help='Force-fit GMM to flag lowquality droplets',default=False,type=bool)
 parser.add_argument('--mode', dest='mode', default="deconvolution",
@@ -43,7 +44,7 @@ if args.mode == "matrixgen":
 
 if args.mode == "skipcount":
 	if args.countpath is None:
-		parser.error('please provide path to anndata.h5ad using --pickle for skipcount mode')
+		parser.error('please provide path to anndata.h5ad using --counts for skipcount mode')
 
 if args.mode is None or args.mode == "deconvolution":
 	if args.bam is None or args.barcodes is None:
@@ -66,6 +67,8 @@ filteredPath=args.filtered_matrix
 barcodetag=args.barcodetag
 umitag=args.umitag
 platform=args.platform
+segmentation=args.segmentation
+
 
 #mode="deconvolution"
 #platform="visium"
@@ -78,7 +81,8 @@ platform=args.platform
 #rawPath=None
 #filteredPath=None
 
-
+if platform == "visium" and segmentation is None:
+	print("No segmentation provided. SCanSNP will only output information about First and Second IDs per barcode")
 
 if outdir == "currentwd":
 	outdir = os.getcwd()
@@ -173,7 +177,7 @@ if __name__ == "__main__":
 		Counts = CountData(varAdata.layers["sparse_Ref"], varAdata.layers["sparse_Alt"], varAdata.var_names, varAdata.obs_names)
 		del varAdata
 		#Deconvolution
-		Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries, platform)
+		Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries, platform, segmentation)
 		Cell_IDs.to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True, index_label = "barcode")
 		
 		
@@ -198,7 +202,7 @@ if __name__ == "__main__":
 			Counts.write_h5ad(outdir+'/varAdata.h5ad')
 		
 		#Deconvolution
-		Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries, platform)
+		Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries, platform, segmentation)
 		Cell_IDs.to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True, index_label = "barcode")
 
 	elif mode == "pileup":
@@ -215,3 +219,12 @@ if __name__ == "__main__":
 		else:
 			#Save ReadCounts without emptyDrops in Anndata
 			Counts.write_h5ad(outdir+'/varAdata.h5ad')
+			
+			
+			
+""" Traceback (most recent call last):
+  File "/home/davide.castaldi/git/SCanSNP/SCanSNP/SCanSNP.py", line 177, in <module>
+    Counts = CountData(varAdata.layers["sparse_Ref"], varAdata.layers["sparse_Alt"], varAdata.var_names, varAdata.obs_names)
+  File "/home/davide.castaldi/.local/lib/python3.6/site-packages/anndata/_core/aligned_mapping.py", line 148, in __getitem__
+    return self._data[key]
+KeyError: 'sparse_Ref' """
