@@ -4,8 +4,8 @@ import time
 import itertools
 import io
 import numpy as np
-from pandarallel import pandarallel
 import sys
+import os
 
 
 
