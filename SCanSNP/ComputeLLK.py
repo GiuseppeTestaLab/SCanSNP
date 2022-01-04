@@ -3,8 +3,8 @@
 #Likelihood calculaiton model
 
 import pysam
-from VCFUtils import *
-from GenUtils import *
+from SCanSNP.VCFUtils import *
+from SCanSNP.GenUtils import *
 
 def ComputeLikelihood(vcf,GenotypesDF,Counts,DiffOnlyIndex):
 	'''

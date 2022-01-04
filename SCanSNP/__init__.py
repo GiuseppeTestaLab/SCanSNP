@@ -6,6 +6,10 @@ import io
 import numpy as np
 import sys
 import os
+from .VCFUtils import *
+from .Wrappers import *
+from .RawBCMatrix_Utils import *
+from .GenUtils import *
 
 
 

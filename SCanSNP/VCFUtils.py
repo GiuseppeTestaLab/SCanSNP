@@ -72,7 +72,8 @@ def creategenotypeDF(vcf):
 	#Generating GenotypesDF from Index and Colnames
 	colnames=["CHROM","POS","ID","REF","ALT"]+list(itertools.chain(*[ (sample+"_RefAl", sample + "_AltAl") for sample  in ExtractSamples(vcf)]))
 	GenotypesDF2 = pd.DataFrame(index=ExtractIndex(vcf), columns=colnames).fillna(0)
-	GenotypesDF2[["CHROM","POS","ID","REF","ALT"]] = ExtractInfo(vcf).values()
+	for col in ["CHROM","POS","ID","REF","ALT"]:
+		GenotypesDF2[col] = ExtractInfo(vcf)[col]
 	#Filling the missing GenotypesDf columns with genotype informations
 	ReferenceVCF=readVCF(vcf)
 	for column in ReferenceVCF:

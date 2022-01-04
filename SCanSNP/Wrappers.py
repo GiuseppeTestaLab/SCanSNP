@@ -1,23 +1,23 @@
 #!/usr/bin/env python
 
-from VCFUtils import *
-from DBLsutils import *
-from Pileup import *
+
 from scipy.sparse import csr_matrix
 import time
 from multiprocessing import Pool
 import itertools
-from ComputeLLK import *
-from GenUtils import *
-from LowQualutils import *
-from lowQualityMark import *
-from lowQualityMark_wEmpty import *
-from dblsMark import *
-from dblsMark_wEmpty import *
 from itertools import chain
 import scipy.sparse
-from classifyUtils import *
-
+from SCanSNP.classifyUtils import *
+from SCanSNP.VCFUtils import *
+from SCanSNP.DBLsutils import *
+from SCanSNP.ComputeLLK import *
+from SCanSNP.GenUtils import *
+from SCanSNP.LowQualutils import *
+from SCanSNP.lowQualityMark import *
+from SCanSNP.lowQualityMark_wEmpty import *
+from SCanSNP.dblsMark import *
+from SCanSNP.dblsMark_wEmpty import *
+from SCanSNP.Pileup import *
 
 
 def deconvolution(Counts, vcf, GenotypesDF, outdir, FullDrops, FullDropsKNNseries, platform, segmentation):

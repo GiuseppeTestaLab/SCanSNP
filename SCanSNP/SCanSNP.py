@@ -123,12 +123,12 @@ import scanpy as sc
 
 #sys.path.append('/home/davide.castaldi/git/SCanSNP/SCanSNP')
 
-from VCFUtils import *
-from Wrappers import *
-from RawBCMatrix_Utils import *
-from GenUtils import *
+from SCanSNP.VCFUtils import *
+from SCanSNP.Wrappers import *
+from SCanSNP.RawBCMatrix_Utils import *
+from SCanSNP.GenUtils import *
 
-if __name__ == "__main__":
+def main():
 	#Creation of differen loci subsets
 	cleanLoci = LociPreClean(vcf)
 	MildcleanLoci = LociPreClean_milds(vcf)
@@ -228,3 +228,8 @@ if __name__ == "__main__":
   File "/home/davide.castaldi/.local/lib/python3.6/site-packages/anndata/_core/aligned_mapping.py", line 148, in __getitem__
     return self._data[key]
 KeyError: 'sparse_Ref' """
+
+
+
+if __name__ == "__main__":
+	main()

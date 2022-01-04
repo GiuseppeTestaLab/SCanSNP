@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
 import itertools
-from VCFUtils import *
+from SCanSNP.VCFUtils import *
 from sklearn.linear_model import LogisticRegression
-from DBLsutils import *
-from GenUtils import *
+from SCanSNP.DBLsutils import *
+from SCanSNP.GenUtils import *
 
 def LocusSpecNoisCalc(DropToDBLDict,Doublet,SingularLociScoreDF,GenotypesDF,vcf,HomozlociList,RefHetLoci,AltHetLoci):
 	comp1 = Doublet[0]

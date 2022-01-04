@@ -3,7 +3,7 @@
 #Some function for doublets handle
 
 import itertools
-from VCFUtils import *
+from SCanSNP.VCFUtils import *
 from sklearn.linear_model import LogisticRegression
 
 
@@ -80,7 +80,7 @@ def NoiseRregression(BestInDropDict, barcodeList, vcf, SingularLociScoreDF, Best
 			BestIDList = []
 			LikeliHoodsDFSS=LikeliHoodsDF.loc[BestInDropDict[FirstID]]
 			for row in range(LikeliHoodsDFSS.shape[0]):
-				SecondBest = LikeliHoodsDFSS.iloc[row , LikeliHoodsDFSS.columns != LikeliHoodsDFSS.iloc[row, :].idxmax(axis = 1)].idxmax(axis = 2)
+				SecondBest = LikeliHoodsDFSS.iloc[row , LikeliHoodsDFSS.columns != LikeliHoodsDFSS.iloc[row, :].idxmax()].idxmax()
 				BestIDList.append(SecondBest)
 			BestIDSeries = pd.Series(BestIDList, index = LikeliHoodsDFSS.index)
 			ClassPredictionFrame = BestIDSeries.to_frame(name = 'SecondID')

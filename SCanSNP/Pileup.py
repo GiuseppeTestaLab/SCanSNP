@@ -11,19 +11,20 @@ import pandas as pd
 import itertools
 from scipy.sparse import csr_matrix
 import scipy.sparse
+from SCanSNP.GenUtils import CountData
 
-from VCFUtils import *
-from DBLsutils import *
+from SCanSNP.VCFUtils import *
+from SCanSNP.DBLsutils import *
 
 import time
 from multiprocessing import Pool
-from ComputeLLK import *
-from GenUtils import *
-from LowQualutils import *
-from lowQualityMark import *
-from lowQualityMark_wEmpty import *
-from dblsMark import *
-from dblsMark_wEmpty import *
+from SCanSNP.ComputeLLK import *
+#from SCanSNP.GenUtils import *
+from SCanSNP.LowQualutils import *
+from SCanSNP.lowQualityMark import *
+from SCanSNP.lowQualityMark_wEmpty import *
+from SCanSNP.dblsMark import *
+from SCanSNP.dblsMark_wEmpty import *
 from itertools import chain
 
 

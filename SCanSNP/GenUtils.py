@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
-from VCFUtils import *
-from DBLsutils import *
-from Pileup import *
+from SCanSNP.VCFUtils import *
+from SCanSNP.DBLsutils import *
+#from SCanSNP.Pileup import *
 from scipy.sparse import csr_matrix
 import copy
 import anndata as ad
+import numpy as np
 
 #from Wrappers import *
 
@@ -76,7 +77,7 @@ class CountData:
 		self.sparseAlt = sparseAlt
 		self.loci = loci
 		self.barcodes = barcodes
-		
+	
 	
 	def copy(self):
 		return copy.copy(self)
