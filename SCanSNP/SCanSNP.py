@@ -174,7 +174,7 @@ def main():
 		'''
 		#Load existing counts
 		varAdata = sc.read_h5ad(countpath)
-		Counts = CountData(varAdata.layers["sparse_Ref"], varAdata.layers["sparse_Alt"], varAdata.var_names, varAdata.obs_names)
+		Counts = CountData(varAdata.layers["RefReads"], varAdata.layers["AltReads"], varAdata.var_names, varAdata.obs_names)
 		del varAdata
 		#Deconvolution
 		Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries, platform, segmentation)
@@ -219,15 +219,6 @@ def main():
 		else:
 			#Save ReadCounts without emptyDrops in Anndata
 			Counts.write_h5ad(outdir+'/varAdata.h5ad')
-			
-			
-			
-""" Traceback (most recent call last):
-  File "/home/davide.castaldi/git/SCanSNP/SCanSNP/SCanSNP.py", line 177, in <module>
-    Counts = CountData(varAdata.layers["sparse_Ref"], varAdata.layers["sparse_Alt"], varAdata.var_names, varAdata.obs_names)
-  File "/home/davide.castaldi/.local/lib/python3.6/site-packages/anndata/_core/aligned_mapping.py", line 148, in __getitem__
-    return self._data[key]
-KeyError: 'sparse_Ref' """
 
 
 

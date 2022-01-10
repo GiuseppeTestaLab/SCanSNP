@@ -73,8 +73,8 @@ def SingularLociCNTR( SingularLoci_Alt, SingularLoci_Ref, Counts, barcodeList, G
 class CountData:
 	
 	def __init__(self, sparseRef, sparseAlt, loci, barcodes):
-		self.sparseRef = sparseRef
-		self.sparseAlt = sparseAlt
+		self.sparseRef = sparseRef.T
+		self.sparseAlt = sparseAlt.T
 		self.loci = loci
 		self.barcodes = barcodes
 	

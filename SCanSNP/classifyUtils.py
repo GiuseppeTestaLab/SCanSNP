@@ -139,31 +139,59 @@ def findThreshold(posRatesDF, ID):
 
 
 def barcodeClassifier_main(DBLmetricsDF, segmentationDF):
-	
+
+	totcells = DBLmetricsDF.shape[0]
+
+	# all the IDs found as first or second
 	mixedIDs = list(set(DBLmetricsDF["FirstID"]).union(set(DBLmetricsDF["SecondID"])))
-	
+
+	# normalize the counts
 	normCounts = normCenter(DBLmetricsDF, mixedIDs)
-	
+
 	positiveCellsID = {}
-	
+
+	# for each ID compute the contribution of singlets, the rate of positives and the threshold for classification
 	for ID in mixedIDs:
-		
 		countsDF = singletscontribution(segmentationDF, normCounts, ID)
-		
-		posRatesDF = definePositiveRates(countsDF)
-		
-		threshold = findThreshold(posRatesDF, ID)
-	
-		positiveCellsID[ID] = pd.DataFrame({"IDs_in_barcode":""},index= normCounts.index)
-		positiveCellsID[ID].loc[normCounts["ID_"+ID] >= threshold, "IDs_in_barcode"] = ID
-	
-	
+		ncellsPos = countsDF[countsDF['label'] == 'positive'].shape[0]
+		ncellsNeg = countsDF[countsDF['label'] == 'negative'].shape[0]
+		percPos = round((ncellsPos/totcells) * 100, 0)
+		percNeg = round((ncellsNeg/totcells) * 100, 0)
+
+		if (int(percPos) < 1):
+
+			print('Warning: ' + str(ID) + ' has a number of positive cells too low (less than 1%)')
+			print('Skipping model fitting for ID ' + str(ID))
+			positiveCellsID[ID] = pd.DataFrame({"IDs_in_barcode": ""}, index= normCounts.index)
+			positiveCellsID[ID].loc[:, "IDs_in_barcode"] = ''
+
+
+		elif (int(percNeg) < 0.5):
+
+			print('Warning: ' + str(ID) + ' has a number of negative cells too low (less than 0.5%)')
+			print('Skipping model fitting for ID ' + str(ID))
+			print('All barcodes will present ID ' + str(ID))
+
+			positiveCellsID[ID] = pd.DataFrame({"IDs_in_barcode": ""},index= normCounts.index)
+			positiveCellsID[ID].loc[:, "IDs_in_barcode"] = ID # all barcodes will contain this ID
+
+		else:
+
+			posRatesDF = definePositiveRates(countsDF)
+
+			threshold = findThreshold(posRatesDF, ID)
+
+			# assign ID based on the computed threshold
+			# positiveCells is a dictionary: each key is an ID
+			positiveCellsID[ID] = pd.DataFrame({"IDs_in_barcode":""}, index= normCounts.index)
+			print(positiveCellsID)
+
+			positiveCellsID[ID].loc[normCounts["ID_" + ID] >= threshold, "IDs_in_barcode"] = ID
+			print(positiveCellsID)
+
 	positiveCellsID = pd.concat(positiveCellsID.values(), axis = 1).apply(lambda x: ','.join(x[x.notnull()]), axis = 1)
-	
 	positiveCellsID=positiveCellsID.replace(',$','', regex=True)
-	
 	positiveCellsID=positiveCellsID.replace(',,',',', regex=True)
-	
 	positiveCellsID=positiveCellsID.replace('^,','', regex=True)
-	
+
 	return positiveCellsID
