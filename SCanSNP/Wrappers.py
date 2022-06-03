@@ -26,7 +26,7 @@ def deconvolution(Counts, vcf, GenotypesDF, outdir, FullDrops, FullDropsKNNserie
 	# Barcodes=pd.read_csv(str(countpath) + '/countBarcodes.tsv', header=None, names=["barcodes"])
 	# Loci=pd.read_csv(str(countpath) + '/countLoci.tsv', header=None, names=["loci"])
 
-	pd.read_csv("/group/testa/Project/PGCLC/multiSEQ_playground_2/segmentationDF.tsv", names=["segmentation"], sep="\t")
+	#pd.read_csv("/group/testa/Project/PGCLC/multiSEQ_playground_2/segmentationDF.tsv", names=["segmentation"], sep="\t")
 	
 	emptyTraining = True if len(FullDrops) < len(Counts.barcodes) else False
 	
