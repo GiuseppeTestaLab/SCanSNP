@@ -16,21 +16,21 @@ def ExtractOrderedDoublets(vcf):
 
 
 
-def FindSecondID(SingularLociScore,BestInDropDict):
-	SecondBestIDList = pd.Series([])
-	for BestID in list(BestInDropDict.keys()):
-		SingularScoreIDspec = SingularLociScore.loc[BestInDropDict[BestID],list(set(ExtractSamples(vcf)) - set([BestID]))]
-		SingularScoreIDspecSS = SingularScoreIDspec[SingularScoreIDspec.apply(lambda row: row.nlargest(2).values[-1],axis=1) != SingularScoreIDspec.apply(lambda row: row.nlargest(1).values[-1],axis=1)]
-		SecondBestIDList = SecondBestIDList.append(SingularScoreIDspecSS.idxmax(axis = 1))
-	DBLsDF = pd.DataFrame( columns = ["FirstID","SecondID"], index = [ cell for cell in barcodeList])
-	DBLsDF = pd.concat([DBLsDF, LikeliHoodsDF2.idxmax(axis = 1).to_frame(name = "BestScoringLL")], axis=1)
-	DBLsDF = pd.concat([DBLsDF, LikeliHoodsDF2.T.apply(lambda x: x.nlargest(2).idxmin()).to_frame(name = "SecondScoringLL")], axis=1)
-	DBLsDF = pd.concat([DBLsDF, SecondBestIDList.to_frame(name = "BestOverallSecondID")], axis=1)
-	DBLsDF["FirstID"] = DBLsDF["BestScoringLL"]
-	DBLsDF["SecondID"] = DBLsDF["BestOverallSecondID"]
-	DBLsDF.SecondID.fillna(DBLsDF.SecondScoringLL, inplace=True)
-	DBLsDF = DBLsDF[["FirstID","SecondID"]]
-	return DBLsDF
+#def FindSecondID(SingularLociScore,BestInDropDict):
+#	SecondBestIDList = pd.Series([])
+#	for BestID in list(BestInDropDict.keys()):
+#		SingularScoreIDspec = SingularLociScore.loc[BestInDropDict[BestID],list(set(ExtractSamples(vcf)) - set([BestID]))]
+#		SingularScoreIDspecSS = SingularScoreIDspec[SingularScoreIDspec.apply(lambda row: row.nlargest(2).values[-1],axis=1) != SingularScoreIDspec.apply(lambda row: row.nlargest(1).values[-1],axis=1)]
+#		SecondBestIDList = SecondBestIDList.append(SingularScoreIDspecSS.idxmax(axis = 1))
+#	DBLsDF = pd.DataFrame( columns = ["FirstID","SecondID"], index = [ cell for cell in barcodeList])
+#	DBLsDF = pd.concat([DBLsDF, LikeliHoodsDF2.idxmax(axis = 1).to_frame(name = "BestScoringLL")], axis=1)
+#	DBLsDF = pd.concat([DBLsDF, LikeliHoodsDF2.T.apply(lambda x: x.nlargest(2).idxmin()).to_frame(name = "SecondScoringLL")], axis=1)
+#	DBLsDF = pd.concat([DBLsDF, SecondBestIDList.to_frame(name = "BestOverallSecondID")], axis=1)
+#	DBLsDF["FirstID"] = DBLsDF["BestScoringLL"]
+#	DBLsDF["SecondID"] = DBLsDF["BestOverallSecondID"]
+#	DBLsDF.SecondID.fillna(DBLsDF.SecondScoringLL, inplace=True)
+#	DBLsDF = DBLsDF[["FirstID","SecondID"]]
+#	return DBLsDF
 
 
 
