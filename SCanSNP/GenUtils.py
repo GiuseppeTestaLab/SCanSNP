@@ -115,11 +115,11 @@ class CountData:
 		return slicedCounts, SGenotypes
 	
 	def write_h5ad(self, writepath=None):
-		varAdata = ad.AnnData(X=self.sparseRef.T)
+		varAdata = ad.AnnData(X=self.sparseRef)
 		varAdata.obs_names = self.barcodes.tolist()
 		varAdata.var_names = self.loci.tolist()
-		varAdata.layers["RefReads"] = self.sparseRef.T
-		varAdata.layers["AltReads"] = self.sparseAlt.T
+		varAdata.layers["RefReads"] = self.sparseRef
+		varAdata.layers["AltReads"] = self.sparseAlt
 		varAdata.write_h5ad(writepath)
 		
 		return None
