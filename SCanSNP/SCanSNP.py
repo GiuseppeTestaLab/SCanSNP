@@ -130,9 +130,10 @@ from SCanSNP.GenUtils import *
 
 def main():
 	#Creation of differen loci subsets
-	cleanLoci = LociPreClean(vcf)
-	MildcleanLoci = LociPreClean_milds(vcf)
-	CleanSingularLoci,SingularLoci_Alt,SingularLoci_Ref = SingularLociSCan(vcf,cleanLoci)
+	if mode != "pileup":
+		cleanLoci = LociPreClean(vcf)
+		MildcleanLoci = LociPreClean_milds(vcf)
+		CleanSingularLoci,SingularLoci_Alt,SingularLoci_Ref = SingularLociSCan(vcf,cleanLoci)
 	
 	FullDrops = pd.read_csv(barcodesFILE, header=None, names=["b"])["b"].astype("string").tolist()
 	
@@ -147,7 +148,9 @@ def main():
 	
 	
 	#Genotypes map creation
-	GenotypesDF = creategenotypeDF(vcf)
+	if mode != "pileup":
+		GenotypesDF = creategenotypeDF(vcf)
+	
 	
 	
 	if mode == "matrixgen":
@@ -209,6 +212,12 @@ def main():
 		'''
 		Performing only count on provided loci list, this mode assumes single-sample VCF file.
 		'''
+		
+		GenotypesDF =  pd.read_csv(vcf, sep ="\t", header=None, names=["CHROM","POS","REF","ALT"])
+		GenotypesDF.index = GenotypesDF["CHROM"].astype(str)+"_"+GenotypesDF["POS"].astype(str)
+		MildcleanLoci = GenotypesDF[(GenotypesDF["REF"].str.len() == 1) & (GenotypesDF["ALT"].str.len() == 1)].index.tolist()
+		
+		
 		Counts = CountsPileup(MildcleanLoci, GenotypesDF,barcodeList, vcf,nThreads, bamFile, barcodetag, umitag)
 			
 		if rawPath is not None:
