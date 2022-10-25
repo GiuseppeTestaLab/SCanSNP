@@ -214,8 +214,8 @@ def main():
 		'''
 		
 		GenotypesDF =  pd.read_csv(vcf, sep ="\t", header=None, names=["CHROM","POS","REF","ALT"])
-		GenotypesDF.index = GenotypesDF["CHROM"].astype(str)+"_"+GenotypesDF["POS"].astype(str)
-		GenotypesDF = GenotypesDF[~GenotypesDF.index.duplicated(keep='first')]
+		GenotypesDF["CHROM"] = GenotypesDF["CHROM"].astype(str)
+		GenotypesDF.index = GenotypesDF["CHROM"]+"_"+GenotypesDF["POS"].astype(str)
 		MildcleanLoci = GenotypesDF[(GenotypesDF["REF"].str.len() == 1) & (GenotypesDF["ALT"].str.len() == 1)].index.tolist()
 		
 		
