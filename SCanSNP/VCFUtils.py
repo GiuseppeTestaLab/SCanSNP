@@ -251,3 +251,13 @@ def FlattenDict(GenotypeChunkDict):
 		GenotypeChunkList.append(chunk)
 	GenotypeChunkList = [item for sublist in GenotypeChunkList for item in sublist]
 	return GenotypeChunkList, GenotypeChunkIndexesList
+
+
+def ExtractMitoPositions(bamFile):
+	mitoContig = ["MT","M"]
+	
+	bam=pysam.AlignmentFile(bamFile, "rb")
+	
+	
+	
+	
