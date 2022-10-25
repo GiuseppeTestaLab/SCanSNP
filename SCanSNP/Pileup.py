@@ -35,22 +35,39 @@ def ReadCounter(chunkIdx, bamFile, barcodeList, GenotypeChunkList, barcodetag, u
 	bam=pysam.AlignmentFile(bamFile, "rb")
 	BarcodeSet=set(barcodeList)
 	readList = []
-	Counts = {"sparse_Ref" : csr_matrix((0, len(barcodeList))), "sparse_Alt":csr_matrix((0, len(barcodeList))), "Locus" : pd.Series()  }
+	if len(GenotypeChunkList[chunkIdx[0]]) == 4:
+		Ref = True
+		Counts = {"sparse_Ref" : csr_matrix((0, len(barcodeList))), "sparse_Alt":csr_matrix((0, len(barcodeList))), "Locus" : pd.Series()  }
+	elif len(GenotypeChunkList[chunkIdx[0]]) == 2:
+		Ref = False
+		Counts =  pd.DataFrame(index = barcodeList)
 	lastPos = chunkIdx[-1]
 	for indexPos in chunkIdx:
 		
 		locus = GenotypeChunkList[indexPos]
 		
-		readList=Pileupper(bam, locus, lastPos,BarcodeSet, readList,barcodetag, umitag)
-		
-		if sys.getsizeof(readList) >= 30000000 or indexPos == lastPos:
+		if Ref:
+			# in this case provided locilist have ref/alt information
+			readList=Pileupper(bam, locus, lastPos,BarcodeSet, readList,barcodetag, umitag)
+			
+			if sys.getsizeof(readList) >= 30000000 or indexPos == lastPos:
+				try:
+					sparse_Ref_TMP,sparse_Alt_TMP,locus_TMP = DFMaker(readList, barcodeList)
+				except:
+					continue
+				Counts["sparse_Ref"] = scipy.sparse.vstack((Counts["sparse_Ref"],sparse_Ref_TMP))
+				Counts["sparse_Alt"] = scipy.sparse.vstack((Counts["sparse_Alt"],sparse_Alt_TMP))
+				Counts["Locus"] = Counts["Locus"].append(locus_TMP)
+				readList = []
+				
+		elif not Ref:
+			# in this case provided locilist have only chrom - pos informations
+			readList=Pileupper_noRef(bam, locus,BarcodeSet, readList,barcodetag, umitag)
 			try:
-				sparse_Ref_TMP,sparse_Alt_TMP,locus_TMP = DFMaker(readList, barcodeList)
+				localcounts = DFMaker_noRef(readList, barcodeList, locus)
 			except:
 				continue
-			Counts["sparse_Ref"] = scipy.sparse.vstack((Counts["sparse_Ref"],sparse_Ref_TMP))
-			Counts["sparse_Alt"] = scipy.sparse.vstack((Counts["sparse_Alt"],sparse_Alt_TMP))
-			Counts["Locus"] = Counts["Locus"].append(locus_TMP)
+			Counts = pd.concat([Counts,localcounts], axis = 1)
 			readList = []
 	bam.close()
 	print("Chunk "+ str(chunkIdx) + " completed")
@@ -199,3 +216,30 @@ def CountsPileup(MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile,b
 	Counts = CountData(CountsDict["sparse_Ref"], CountsDict["sparse_Alt"], CountsDict["Locus"], CountsDict["Barcode"])
 	
 	return Counts
+	
+	
+	
+# def ReadCounter(chunkIdx, bamFile, barcodeList, GenotypeChunkList, barcodetag, umitag):
+# 	bam=pysam.AlignmentFile(bamFile, "rb")
+# 	BarcodeSet=set(barcodeList)
+# 	readList = []
+# 	Counts = {"sparse_Ref" : csr_matrix((0, len(barcodeList))), "sparse_Alt":csr_matrix((0, len(barcodeList))), "Locus" : pd.Series()  }
+# 	lastPos = chunkIdx[-1]
+# 	for indexPos in chunkIdx:
+		
+# 		locus = GenotypeChunkList[indexPos]
+		
+# 		readList=Pileupper(bam, locus, lastPos,BarcodeSet, readList,barcodetag, umitag)
+		
+# 		if sys.getsizeof(readList) >= 30000000 or indexPos == lastPos:
+# 			try:
+# 				sparse_Ref_TMP,sparse_Alt_TMP,locus_TMP = DFMaker(readList, barcodeList)
+# 			except:
+# 				continue
+# 			Counts["sparse_Ref"] = scipy.sparse.vstack((Counts["sparse_Ref"],sparse_Ref_TMP))
+# 			Counts["sparse_Alt"] = scipy.sparse.vstack((Counts["sparse_Alt"],sparse_Alt_TMP))
+# 			Counts["Locus"] = Counts["Locus"].append(locus_TMP)
+# 			readList = []
+# 	bam.close()
+# 	print("Chunk "+ str(chunkIdx) + " completed")
+# 	return Counts

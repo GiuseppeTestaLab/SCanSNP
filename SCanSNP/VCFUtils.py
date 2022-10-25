@@ -219,16 +219,19 @@ def ChunkMaker(GenotypesDF, nThreads, OmniIndex):
 	GenotypesDF_ss = GenotypesDF.loc[OmniIndex].sample(frac = 1)
 	for contig in list(GenotypesDF["CHROM"].unique()):
 		GenotypeChunkDICT[contig] = splitContig(contig, GenotypesDF_ss, nThreads)[0]
-		Remains = Remains.append(splitContig(contig, GenotypesDF_ss, nThreads)[1])
+		#Remains = Remains.append(splitContig(contig, GenotypesDF_ss, nThreads)[1])
+		Remains = pd.concat([Remains, splitContig(contig, GenotypesDF_ss, nThreads)[1]])
 	for Chunk in range(0,nThreads):
 		GenotypeChunkDICT_final[Chunk] = pd.DataFrame()
 		for key in GenotypeChunkDICT.keys():
 			try:
-				GenotypeChunkDICT_final[Chunk] = GenotypeChunkDICT_final[Chunk].append(GenotypeChunkDICT[key][Chunk])
+				#GenotypeChunkDICT_final[Chunk] = GenotypeChunkDICT_final[Chunk].append(GenotypeChunkDICT[key][Chunk])
+				GenotypeChunkDICT_final[Chunk] = pd.concat([GenotypeChunkDICT_final[Chunk],GenotypeChunkDICT[key][Chunk]])
 			except:
 				continue
 	minChunk=min(GenotypeChunkDICT_final, key=lambda k: len(GenotypeChunkDICT_final[k]))
-	GenotypeChunkDICT_final[minChunk] = GenotypeChunkDICT_final[minChunk].append(Remains)
+	#GenotypeChunkDICT_final[minChunk] = GenotypeChunkDICT_final[minChunk].append(Remains)
+	GenotypeChunkDICT_final[minChunk] = pd.concat([GenotypeChunkDICT_final[minChunk], Remains])
 	return GenotypeChunkDICT_final
 
 
@@ -241,7 +244,9 @@ def FlattenDict(GenotypeChunkDict):
 	GenotypeChunkIndexesList = []
 	ChunkStart = 0
 	for k in GenotypeChunkDict.keys():
-		chunk=GenotypeChunkDict[k].loc[:,["CHROM","POS","REF","ALT"]]
+		colsToMap = ["CHROM","POS","REF","ALT"] if ("REF" in  GenotypeChunkDict[k].columns) & ("ALT" in  GenotypeChunkDict[k].columns) else ["CHROM","POS"]
+		
+		chunk=GenotypeChunkDict[k].loc[:,colsToMap]
 		# Create Chunk Index and append to list
 		GenotypeChunkIndexesList.append(range(ChunkStart, ChunkStart+chunk.shape[0]))
 		ChunkStart=ChunkStart+chunk.shape[0]
@@ -253,10 +258,6 @@ def FlattenDict(GenotypeChunkDict):
 	return GenotypeChunkList, GenotypeChunkIndexesList
 
 
-def ExtractMitoPositions(bamFile):
-	mitoContig = ["MT","M"]
-	
-	bam=pysam.AlignmentFile(bamFile, "rb")
 	
 	
 	

@@ -232,15 +232,13 @@ def main():
 
 	elif mode == "mito":
 		'''
-		Performing only count on provided loci list, this mode assumes single-sample VCF file.
+		Pileup on all positions of provided (mito) chromosome only
 		'''
 		
-		GenotypesDF =  pd.read_csv(vcf, sep ="\t", header=None, names=["CHROM","POS","REF","ALT"])
-		GenotypesDF["CHROM"] = GenotypesDF["CHROM"].astype(str)
-		GenotypesDF.index = GenotypesDF["CHROM"]+"_"+GenotypesDF["POS"].astype(str)
-		MildcleanLoci = GenotypesDF[(GenotypesDF["REF"].str.len() == 1) & (GenotypesDF["ALT"].str.len() == 1)].index.tolist()
-		
-		
+		GenotypesDF = ExtractMitoPositions(bamFile, mitoContig)
+		MildcleanLoci = MildcleanLoci.index.tolist()
+	
+	
 		Counts = CountsPileup(MildcleanLoci, GenotypesDF,barcodeList, vcf,nThreads, bamFile, barcodetag, umitag)
 			
 		if rawPath is not None:
