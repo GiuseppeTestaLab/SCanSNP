@@ -236,7 +236,7 @@ def ChunkMaker(GenotypesDF, nThreads, OmniIndex):
 
 
 
-def FlattenDict(GenotypeChunkDict):
+def FlattenDict(GenotypeChunkDict, Ref):
 	'''
 	Transform dictionary into List of lists + ranges for efficiency
 	'''
@@ -244,7 +244,7 @@ def FlattenDict(GenotypeChunkDict):
 	GenotypeChunkIndexesList = []
 	ChunkStart = 0
 	for k in GenotypeChunkDict.keys():
-		colsToMap = ["CHROM","POS","REF","ALT"] if ("REF" in  GenotypeChunkDict[k].columns) & ("ALT" in  GenotypeChunkDict[k].columns) else ["CHROM","POS"]
+		colsToMap = ["CHROM","POS","REF","ALT"] if Ref else ["CHROM","POS"]
 		
 		chunk=GenotypeChunkDict[k].loc[:,colsToMap]
 		# Create Chunk Index and append to list
@@ -257,8 +257,3 @@ def FlattenDict(GenotypeChunkDict):
 	GenotypeChunkList = [item for sublist in GenotypeChunkList for item in sublist]
 	return GenotypeChunkList, GenotypeChunkIndexesList
 
-
-	
-	
-	
-	

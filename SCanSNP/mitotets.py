@@ -23,6 +23,8 @@ parser.add_argument('--umitag', dest='umitag', help='tag in the bam file for UMI
 parser.add_argument('--celltag', dest='barcodetag', help='tag in the bam file for cells',default="CB",type=str)
 parser.add_argument('--segmentation', dest='segmentation', help='tsv with barcode-nuclei information',default=None,type=str)
 parser.add_argument('--outdir', dest='outdir', help='use',default="currentwd",type=str)
+parser.add_argument('--mito_contig', dest='mitoContig', help='use',type=str)
+
 #parser.add_argument('--flagLowQual', dest='LowQual', help='Force-fit GMM to flag lowquality droplets',default=False,type=bool)
 parser.add_argument('--mode', dest='mode', default="deconvolution",
 	required=False,
@@ -41,6 +43,10 @@ args = parser.parse_args()
 if args.mode == "matrixgen":
 	if args.bam is None or args.barcodes is None:
 		parser.error('please provide --bam and --barcodes for matrixgen mode')
+
+if args.mode == "mito":
+	if args.mitoContig is None:
+		parser.error('please provide --mito_contig')
 
 if args.mode == "skipcount":
 	if args.countpath is None:
@@ -127,6 +133,8 @@ from SCanSNP.VCFUtils import *
 from SCanSNP.Wrappers import *
 from SCanSNP.RawBCMatrix_Utils import *
 from SCanSNP.GenUtils import *
+from SCanSNP.mitoUtils import *
+
 
 def main():
 	#Creation of differen loci subsets
@@ -134,6 +142,7 @@ def main():
 		cleanLoci = LociPreClean(vcf)
 		MildcleanLoci = LociPreClean_milds(vcf)
 		CleanSingularLoci,SingularLoci_Alt,SingularLoci_Ref = SingularLociSCan(vcf,cleanLoci)
+		GenotypesDF = creategenotypeDF(vcf)
 	
 	FullDrops = pd.read_csv(barcodesFILE, header=None, names=["b"])["b"].astype("string").tolist()
 	
@@ -147,11 +156,6 @@ def main():
 	
 	
 	
-	#Genotypes map creation
-	if mode != "pileup":
-		GenotypesDF = creategenotypeDF(vcf)
-	
-	
 	
 	if mode == "matrixgen":
 		'''
@@ -160,7 +164,7 @@ def main():
 		Counts = CountsMatrices(CleanSingularLoci, cleanLoci,
 			MildcleanLoci, GenotypesDF,
 			barcodeList, vcf,
-			nThreads, bamFile , barcodetag, umitag)
+			nThreads, bamFile , barcodetag, umitag, Ref=True)
 			
 		if rawPath is not None:
 			#Save ReadCounts with emptyDrops in Anndata
@@ -177,7 +181,7 @@ def main():
 		'''
 		#Load existing counts
 		varAdata = sc.read_h5ad(countpath)
-		Counts = CountData(varAdata.layers["RefReads"], varAdata.layers["AltReads"], varAdata.var_names, varAdata.obs_names)
+		Counts = CountData(varAdata.layers["RefReads"], varAdata.layers["AltReads"], varAdata.var_names, varAdata.obs_names, Ref=True)
 		del varAdata
 		#Deconvolution
 		Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries, platform, segmentation)
@@ -219,7 +223,7 @@ def main():
 		MildcleanLoci = GenotypesDF[(GenotypesDF["REF"].str.len() == 1) & (GenotypesDF["ALT"].str.len() == 1)].index.tolist()
 		
 		
-		Counts = CountsPileup(MildcleanLoci, GenotypesDF,barcodeList, vcf,nThreads, bamFile, barcodetag, umitag)
+		Counts = CountsPileup(MildcleanLoci, GenotypesDF,barcodeList, vcf,nThreads, bamFile, barcodetag, umitag, Ref=True)
 			
 		if rawPath is not None:
 			#Save ReadCounts with emptyDrops in Anndata
@@ -236,19 +240,12 @@ def main():
 		'''
 		
 		GenotypesDF = ExtractMitoPositions(bamFile, mitoContig)
-		MildcleanLoci = MildcleanLoci.index.tolist()
+		MildcleanLoci = GenotypesDF.index.tolist()
 	
 	
-		Counts = CountsPileup(MildcleanLoci, GenotypesDF,barcodeList, vcf,nThreads, bamFile, barcodetag, umitag)
+		Counts = CountsPileup(MildcleanLoci, GenotypesDF,barcodeList,nThreads, bamFile, barcodetag, umitag, Ref=False)
 			
-		if rawPath is not None:
-			#Save ReadCounts with emptyDrops in Anndata
-			Counts.write_h5ad(outdir+'/varAdata.h5ad')	
-			#Save ReadCounts without emptyDrops in Anndata
-			Counts.slice(barcodeList = FullDrops)[0].write_h5ad(outdir+'/varAdata.h5ad')
-		else:
-			#Save ReadCounts without emptyDrops in Anndata
-			Counts.write_h5ad(outdir+'/varAdata.h5ad')
+		Counts.to_csv(outdir+"/{}.tsv".format(mitoContig),sep="\t")
 
 if __name__ == "__main__":
 	main()
