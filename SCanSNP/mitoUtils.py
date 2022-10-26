@@ -30,7 +30,7 @@ def ExtractMitoPositions(bamFile, mitoContig):
 		print("WARNING detected positions do not match chromoseome length!!!")
 	
 	#temp!!
-	posList = posList[1:20]
+	posList = posList[1:]
 	
 	GenotypesDF["CHROM"] = [str(mitoContig)]*len(posList)
 	GenotypesDF["POS"] = posList

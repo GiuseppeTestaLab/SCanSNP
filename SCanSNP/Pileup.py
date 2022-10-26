@@ -62,7 +62,7 @@ def ReadCounter(chunkIdx, bamFile, barcodeList, GenotypeChunkList, barcodetag, u
 			print(locus)
 			readList=Pileupper_noRef(bam, locus,BarcodeSet, readList,barcodetag, umitag)
 			# in this case provided locilist have only chrom - pos informations
-			if sys.getsizeof(readList) >= 30000000 or indexPos == lastPos:
+			if indexPos == lastPos:
 				try:
 					localcounts = DFMaker_noRef(readList, barcodeList)
 				except:
