@@ -11,20 +11,20 @@ import pandas as pd
 import itertools
 from scipy.sparse import csr_matrix
 import scipy.sparse
-from SCanSNP.GenUtils import CountData
+from GenUtils import CountData
 
-from SCanSNP.VCFUtils import *
-from SCanSNP.DBLsutils import *
+from VCFUtils_copy import *
+from DBLsutils import *
 
 import time
 from multiprocessing import Pool
-from SCanSNP.ComputeLLK import *
-#from SCanSNP.GenUtils import *
-from SCanSNP.LowQualutils import *
-from SCanSNP.lowQualityMark import *
-from SCanSNP.lowQualityMark_wEmpty import *
-from SCanSNP.dblsMark import *
-from SCanSNP.dblsMark_wEmpty import *
+from ComputeLLK import *
+#from GenUtils import *
+from LowQualutils import *
+from lowQualityMark import *
+from lowQualityMark_wEmpty import *
+from dblsMark import *
+from dblsMark_wEmpty import *
 from itertools import chain
 
 
@@ -35,7 +35,7 @@ def ReadCounter(chunkIdx, bamFile, barcodeList, GenotypeChunkList, barcodetag, u
 	bam=pysam.AlignmentFile(bamFile, "rb")
 	BarcodeSet=set(barcodeList)
 	readList = []
-	Counts = {"sparse_Ref" : csr_matrix((0, len(barcodeList))), "sparse_Alt":csr_matrix((0, len(barcodeList))), "Locus" : pd.Series()  }
+	Counts = {"sparse_Ref" : csr_matrix((0, len(barcodeList)),dtype=np.int16), "sparse_Alt":csr_matrix((0, len(barcodeList)),dtype=np.int16), "Locus" : pd.Series(dtype="str") }
 	lastPos = chunkIdx[-1]
 	for indexPos in chunkIdx:
 		
@@ -123,15 +123,13 @@ def DFMaker(readList, barcodeList):
 
 
 
-def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile, barcodetag, umitag):
+def CountsMatrices(GenotypesDF, barcodeList,vcf,nThreads, bamFile, barcodetag, umitag):
 	'''
 	Fire-up the main Pileupper
 	'''
 
-	OmniIndex = list(set(CleanSingularLoci + DiffOnlyIndexMaker(vcf, cleanLoci) + DoubletSpecificSingularLociScan(vcf,GenotypesDF, MildcleanLoci)[0]))
-
 	print('Splitting Variants into chunks...')
-	GenotypeChunkList,GenotypeChunkIndexesList = FlattenDict(ChunkMaker(GenotypesDF, nThreads, OmniIndex))
+	GenotypeChunkList,GenotypeChunkIndexesList = FlattenDict(ChunkMaker(GenotypesDF, nThreads))
 
 	print('Pileup started...')
 	start = time.time()
@@ -164,13 +162,13 @@ def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, bar
 	
 
 
-def CountsPileup(MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile,barcodetag, umitag):
+def CountsPileup(GenotypesDF, barcodeList,vcf,nThreads, bamFile,barcodetag, umitag):
 	'''
 	Fire-up the main Pileupper assuming 1 only ID in VCF i.e. sc pileup over list of loci
 	'''
 
 	print('Splitting Variants into chunks...')
-	GenotypeChunkList,GenotypeChunkIndexesList = FlattenDict(ChunkMaker(GenotypesDF, nThreads, MildcleanLoci))
+	GenotypeChunkList,GenotypeChunkIndexesList = FlattenDict(ChunkMaker(GenotypesDF, nThreads))
 
 	print('Pileup started...')
 	start = time.time()

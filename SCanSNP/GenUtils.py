@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-from SCanSNP.VCFUtils import *
-from SCanSNP.DBLsutils import *
-#from SCanSNP.Pileup import *
+from VCFUtils_copy import *
+from DBLsutils import *
+#from Pileup import *
 from scipy.sparse import csr_matrix
 import copy
 import anndata as ad
@@ -39,19 +39,19 @@ def SingularLociCNTR( SingularLoci_Alt, SingularLoci_Ref, Counts, barcodeList, G
 	'''
 	#RefQuery
 	SingularLoci_Ref_Counts,RefSingularGenotype  = Counts.slice(lociList=SingularLoci_Ref, Genotypes=GenotypesDF)
-	RefSingularGenotype =  RefSingularGenotype[[ID+'_RefAl' for ID in list(ExtractSamples(vcf))]].replace(1,2)
+	RefSingularGenotype =  RefSingularGenotype[[ID+'_RefAl' for ID in list(VariantsFile.ExtractSamples())]].replace(1,2)
 	
 	#Alt Query
 	SingularLoci_Alt_Counts,AltSingularGenotype  = Counts.slice(lociList=SingularLoci_Alt, Genotypes=GenotypesDF)
-	AltSingularGenotype = AltSingularGenotype[[ID+'_AltAl' for ID in list(ExtractSamples(vcf))]].replace(1,2)
+	AltSingularGenotype = AltSingularGenotype[[ID+'_AltAl' for ID in list(VariantsFile.ExtractSamples())]].replace(1,2)
 	
 	
 	#Init data strucutres
 	CNTRPerBArcodeAlt = {}
 	CNTRPerBArcodeRef = {}
-	TotalCNTR = pd.DataFrame( columns = list(ExtractSamples(vcf)), index = Counts.barcodes).fillna(0.0)
-	IDsToQueryAlt = [ID+'_AltAl' for ID in list(ExtractSamples(vcf))]
-	IDsToQueryRef = [ID+'_RefAl' for ID in list(ExtractSamples(vcf))]
+	TotalCNTR = pd.DataFrame( columns = list(VariantsFile.ExtractSamples()), index = Counts.barcodes).fillna(0.0)
+	IDsToQueryAlt = [ID+'_AltAl' for ID in list(VariantsFile.ExtractSamples())]
+	IDsToQueryRef = [ID+'_RefAl' for ID in list(VariantsFile.ExtractSamples())]
 	#PileUp for Alt informative loci
 	for ID in IDsToQueryAlt:
 		AltGenotypeID = AltSingularGenotype[ID].to_numpy()

@@ -10,7 +10,7 @@ import seaborn as sns
 from scipy.stats import norm
 import numpy as np
 from scipy import stats
-from SCanSNP.plots import FittedMixturePlot
+from plots import FittedMixturePlot
 import rpy2.robjects as robjects
 from rpy2.robjects.packages import importr
 from rpy2.robjects import r, pandas2ri

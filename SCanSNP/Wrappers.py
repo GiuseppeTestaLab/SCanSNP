@@ -7,17 +7,17 @@ from multiprocessing import Pool
 import itertools
 from itertools import chain
 import scipy.sparse
-from SCanSNP.classifyUtils import *
-from SCanSNP.VCFUtils import *
-from SCanSNP.DBLsutils import *
-from SCanSNP.ComputeLLK import *
-from SCanSNP.GenUtils import *
-from SCanSNP.LowQualutils import *
-from SCanSNP.lowQualityMark import *
-from SCanSNP.lowQualityMark_wEmpty import *
-from SCanSNP.dblsMark import *
-from SCanSNP.dblsMark_wEmpty import *
-from SCanSNP.Pileup import *
+from classifyUtils import *
+from VCFUtils_copy import *
+from DBLsutils import *
+from ComputeLLK import *
+from GenUtils import *
+from LowQualutils import *
+from lowQualityMark import *
+from lowQualityMark_wEmpty import *
+from dblsMark import *
+from dblsMark_wEmpty import *
+from Pileup import *
 
 
 def deconvolution(Counts, vcf, GenotypesDF, outdir, FullDrops, FullDropsKNNseries, platform, segmentation):
@@ -59,7 +59,7 @@ def deconvolution(Counts, vcf, GenotypesDF, outdir, FullDrops, FullDropsKNNserie
 	
 	SingularLociScoreDF = SingularLociCNTR( SingularLoci_Alt, SingularLoci_Ref, Counts, barcodeList, GenotypesDF,vcf)
 	
-	if len(ExtractSamples(vcf)) > 2:
+	if len(VariantsFile.ExtractSamples()) > 2:
 		DBLsDF=NoiseRregression(BestInDropDict, barcodeList, vcf, SingularLociScoreDF, BestBarcodeID, LikeliHoodsDF)
 	else:
 		ID1 = list(BestInDropDict.keys())[0]
@@ -79,7 +79,7 @@ def deconvolution(Counts, vcf, GenotypesDF, outdir, FullDrops, FullDropsKNNserie
 	DBLs_ADJ_Contributions = LowQualScore(DropToDBLDict,Counts,DBLSpecificSingularLociDict,vcf, GenotypesDF,SingularLociScoreDF)
 	
 	#Editing DFs before concat
-	Contributions = SingularLociScoreDF[ExtractSamples(vcf)]
+	Contributions = SingularLociScoreDF[VariantsFile.ExtractSamples()]
 	BestIDs = DBLsDF.replace("ID_","", regex = True)
 	
 	DBLmetricsDF = pd.concat([Contributions,DBLs_ADJ_Contributions,BestIDs], axis = 1)

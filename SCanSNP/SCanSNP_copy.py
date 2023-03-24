@@ -1,8 +1,7 @@
 
-#%%
 import argparse
 import os
-
+os.environ['R_HOME'] = '/home/davide.castaldi/miniconda3/envs/SCanSNP_devel/lib/R'
 
 parser = argparse.ArgumentParser(description='Process some integers.')
 
@@ -38,6 +37,7 @@ parser.add_argument('--platform', dest='platform', default="chromium",
 	help='select the library platform')
 
 args = parser.parse_args()
+
 
 if args.mode == "matrixgen":
 	if args.bam is None or args.barcodes is None:
@@ -123,6 +123,7 @@ import anndata as ad
 import scanpy as sc
 import os
 
+
 #sys.path.append(os.getcwd())
 #sys.path.append('/home/davide.castaldi/git/SCanSNP/SCanSNP')
 
@@ -131,112 +132,112 @@ from VCFUtils_copy import *
 from Wrappers import *
 from RawBCMatrix_Utils import *
 from GenUtils import *
+from VCFUtils_copy import *
 
 
 
-def main():
-	#Creation of differen loci subsets
-	if mode != "pileup":
-		cleanLoci = LociPreClean(vcf)
-		MildcleanLoci = LociPreClean_milds(vcf)
-		CleanSingularLoci,SingularLoci_Alt,SingularLoci_Ref = SingularLociSCan(vcf,cleanLoci)
-	
-	FullDrops = pd.read_csv(barcodesFILE, header=None, names=["b"])["b"].astype("string").tolist()
-	
-	#If raw counts cellranger matrix is provided launch RawBCMatrix module
+
+#Creation of differen loci subsets
+if mode != "pileup":
+	VariantsFile = VCFdata(vcf)
+	#cleanLoci = LociPreClean(vcf)
+	#CleanSingularLoci,SingularLoci_Alt,SingularLoci_Ref = SingularLociSCan(vcf,cleanLoci)
+
+FullDrops = pd.read_csv(barcodesFILE, header=None, names=["b"])["b"].astype("string").tolist()
+
+#If raw counts cellranger matrix is provided launch RawBCMatrix module
+if rawPath is not None:
+	FullDropsKNNseries,EmptyBarcodeList = UnfilteredAdataAdata(filteredPath, rawPath, outdir, nHKgenes=50, raw_to_filt_ratio=1)
+	barcodeList=FullDrops+EmptyBarcodeList
+else:
+	barcodeList = FullDrops
+	FullDropsKNNseries = None
+
+
+
+#Genotypes map creation
+if mode != "pileup":
+	GenotypesDF = VariantsFile.creategenotypeDF()
+
+
+
+if mode == "matrixgen":
+	'''
+	Performing only count
+	'''
+	Counts = CountsMatrices(GenotypesDF,
+		barcodeList, vcf,
+		nThreads, bamFile , barcodetag, umitag)
+		
 	if rawPath is not None:
-		FullDropsKNNseries,EmptyBarcodeList = UnfilteredAdataAdata(filteredPath, rawPath, outdir, nHKgenes=50, raw_to_filt_ratio=1)
-		barcodeList=FullDrops+EmptyBarcodeList
+		#Save ReadCounts with emptyDrops in Anndata
+		Counts.write_h5ad(outdir+'/varAdata.h5ad')	
+		#Save ReadCounts without emptyDrops in Anndata
+		Counts.slice(barcodeList = FullDrops)[0].write_h5ad(outdir+'/varAdata.h5ad')
 	else:
-		barcodeList = FullDrops
-		FullDropsKNNseries = None
-	
-	
-	
-	#Genotypes map creation
-	if mode != "pileup":
-		GenotypesDF = creategenotypeDF(vcf)
-	
-	
-	
-	if mode == "matrixgen":
-		'''
-		Performing only count
-		'''
-		Counts = CountsMatrices(CleanSingularLoci, cleanLoci,
-			MildcleanLoci, GenotypesDF,
-			barcodeList, vcf,
-			nThreads, bamFile , barcodetag, umitag)
-			
-		if rawPath is not None:
-			#Save ReadCounts with emptyDrops in Anndata
-			Counts.write_h5ad(outdir+'/varAdata.h5ad')	
-			#Save ReadCounts without emptyDrops in Anndata
-			Counts.slice(barcodeList = FullDrops)[0].write_h5ad(outdir+'/varAdata.h5ad')
-		else:
-			#Save ReadCounts without emptyDrops in Anndata
-			Counts.write_h5ad(outdir+'/varAdata.h5ad')
-	
-	elif mode == "skipcount":
-		'''
-		Performing only deconvolution based on provided counts
-		'''
-		#Load existing counts
-		varAdata = sc.read_h5ad(countpath)
-		Counts = CountData(varAdata.layers["RefReads"], varAdata.layers["AltReads"], varAdata.var_names, varAdata.obs_names)
-		del varAdata
-		#Deconvolution
-		Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries, platform, segmentation)
-		Cell_IDs.to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True, index_label = "barcode")
-		
-		
-	elif mode == "deconvolution":
-		'''
-		Perform both count and ceconvolution
-		'''
-		#counting
-		Counts = CountsMatrices(CleanSingularLoci, cleanLoci,
-			MildcleanLoci, GenotypesDF,
-			barcodeList, vcf,
-			nThreads, bamFile , barcodetag, umitag)
-		
-		#Save ReadCounts in Anndata
-		if rawPath is not None:
-			#Save ReadCounts with emptyDrops in Anndata
-			Counts.write_h5ad(outdir+'/varAdata.h5ad')	
-			#Save ReadCounts without emptyDrops in Anndata
-			Counts.slice(barcodeList = FullDrops)[0].write_h5ad(outdir+'/varAdata.h5ad')
-		else:
-			#Save ReadCounts without emptyDrops in Anndata
-			Counts.write_h5ad(outdir+'/varAdata.h5ad')
-		
-		#Deconvolution
-		Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries, platform, segmentation)
-		Cell_IDs.to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True, index_label = "barcode")
-
-	elif mode == "pileup":
-		'''
-		Performing only count on provided loci list, this mode assumes single-sample VCF file.
-		'''
-		
-		GenotypesDF =  pd.read_csv(vcf, sep ="\t", header=None, names=["CHROM","POS","REF","ALT"])
-		GenotypesDF["CHROM"] = GenotypesDF["CHROM"].astype(str)
-		GenotypesDF.index = GenotypesDF["CHROM"]+"_"+GenotypesDF["POS"].astype(str)
-		MildcleanLoci = GenotypesDF[(GenotypesDF["REF"].str.len() == 1) & (GenotypesDF["ALT"].str.len() == 1)].index.tolist()
-		
-		
-		Counts = CountsPileup(MildcleanLoci, GenotypesDF,barcodeList, vcf,nThreads, bamFile, barcodetag, umitag)
-			
-		if rawPath is not None:
-			#Save ReadCounts with emptyDrops in Anndata
-			Counts.write_h5ad(outdir+'/varAdata.h5ad')	
-			#Save ReadCounts without emptyDrops in Anndata
-			Counts.slice(barcodeList = FullDrops)[0].write_h5ad(outdir+'/varAdata.h5ad')
-		else:
-			#Save ReadCounts without emptyDrops in Anndata
-			Counts.write_h5ad(outdir+'/varAdata.h5ad')
+		#Save ReadCounts without emptyDrops in Anndata
+		Counts.write_h5ad(outdir+'/varAdata.h5ad')
 
 
 
-if __name__ == "__main__":
-	main()
+
+
+elif mode == "skipcount":
+	'''
+	Performing only deconvolution based on provided counts
+	'''
+	#Load existing counts
+	varAdata = sc.read_h5ad(countpath)
+	Counts = CountData(varAdata.layers["RefReads"], varAdata.layers["AltReads"], varAdata.var_names, varAdata.obs_names)
+	del varAdata
+	#Deconvolution
+	Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries, platform, segmentation)
+	Cell_IDs.to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True, index_label = "barcode")
+	
+	
+elif mode == "deconvolution":
+	'''
+	Perform both count and ceconvolution
+	'''
+	#counting
+	Counts = CountsMatrices(GenotypesDF,
+		barcodeList, vcf,
+		nThreads, bamFile , barcodetag, umitag)
+	
+	#Save ReadCounts in Anndata
+	if rawPath is not None:
+		#Save ReadCounts with emptyDrops in Anndata
+		Counts.write_h5ad(outdir+'/varAdata.h5ad')	
+		#Save ReadCounts without emptyDrops in Anndata
+		Counts.slice(barcodeList = FullDrops)[0].write_h5ad(outdir+'/varAdata.h5ad')
+	else:
+		#Save ReadCounts without emptyDrops in Anndata
+		Counts.write_h5ad(outdir+'/varAdata.h5ad')
+	
+	#Deconvolution
+	Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries, platform, segmentation)
+	Cell_IDs.to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True, index_label = "barcode")
+
+elif mode == "pileup":
+	'''
+	Performing only count on provided loci list, this mode assumes single-sample VCF file.
+	'''
+	
+	GenotypesDF =  pd.read_csv(vcf, sep ="\t", header=None, names=["CHROM","POS","REF","ALT"])
+	GenotypesDF["CHROM"] = GenotypesDF["CHROM"].astype(str)
+	GenotypesDF.index = GenotypesDF["CHROM"]+"_"+GenotypesDF["POS"].astype(str)
+	MildcleanLoci = GenotypesDF[(GenotypesDF["REF"].str.len() == 1) & (GenotypesDF["ALT"].str.len() == 1)].index.tolist()
+	
+	
+	Counts = CountsPileup(GenotypesDF,barcodeList, vcf,nThreads, bamFile, barcodetag, umitag)
+		
+	if rawPath is not None:
+		#Save ReadCounts with emptyDrops in Anndata
+		Counts.write_h5ad(outdir+'/varAdata.h5ad')	
+		#Save ReadCounts without emptyDrops in Anndata
+		Counts.slice(barcodeList = FullDrops)[0].write_h5ad(outdir+'/varAdata.h5ad')
+	else:
+		#Save ReadCounts without emptyDrops in Anndata
+		Counts.write_h5ad(outdir+'/varAdata.h5ad')
+
+

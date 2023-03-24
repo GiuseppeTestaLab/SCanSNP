@@ -11,7 +11,7 @@ from collections import Counter
 import math
 
 
-def ExtractSamples(vcf):
+def VariantsFile.ExtractSamples():
 	'''
 	Extraction of sample names from VCF
 	'''
@@ -32,7 +32,7 @@ def readVCF(vcf):
 	'''
 	with open(vcf, 'r') as f:
 		lines = [l for l in f if not l.startswith('#')]
-	return pd.read_csv(io.StringIO(''.join(lines)), names = ["CHROM","POS","ID","REF","ALT","QUAL","FILTER","INFO","FIELDS"]+[ sample for sample  in ExtractSamples(vcf)],sep='\t')[[sample for sample  in ExtractSamples(vcf) ]]
+	return pd.read_csv(io.StringIO(''.join(lines)), names = ["CHROM","POS","ID","REF","ALT","QUAL","FILTER","INFO","FIELDS"]+[ sample for sample  in VariantsFile.ExtractSamples()],sep='\t')[[sample for sample  in VariantsFile.ExtractSamples() ]]
 
 
 def ExtractIndex(vcf):
@@ -70,7 +70,7 @@ def creategenotypeDF(vcf):
 	IGNORING DOUBLETS!!
 	'''
 	#Generating GenotypesDF from Index and Colnames
-	colnames=["CHROM","POS","ID","REF","ALT"]+list(itertools.chain(*[ (sample+"_RefAl", sample + "_AltAl") for sample  in ExtractSamples(vcf)]))
+	colnames=["CHROM","POS","ID","REF","ALT"]+list(itertools.chain(*[ (sample+"_RefAl", sample + "_AltAl") for sample  in VariantsFile.ExtractSamples()]))
 	GenotypesDF2 = pd.DataFrame(index=ExtractIndex(vcf), columns=colnames).fillna(0)
 	for col in ["CHROM","POS","ID","REF","ALT"]:
 		GenotypesDF2[col] = ExtractInfo(vcf)[col]
@@ -206,25 +206,24 @@ def splitContig(contig, genotypes, nThreads):
 				ChunkDICT[Chunk] = GenotypeChunk.iloc[range(ChunkStart, ChunkStart+chunkSizes+LeftOver)]
 			ChunkStart = ChunkStart + chunkSizes
 	else:
-		RemainsDF = RemainsDF.append(GenotypeChunk)
+		RemainsDF = pd.concat([RemainsDF,GenotypeChunk])
 	return ChunkDICT, RemainsDF
 
 
 
 
-def ChunkMaker(GenotypesDF, nThreads, OmniIndex):
+def ChunkMaker(GenotypesDF, nThreads):
 	GenotypeChunkDICT = {}
 	Remains = pd.DataFrame()
 	GenotypeChunkDICT_final = {}
-	GenotypesDF_ss = GenotypesDF.loc[OmniIndex].sample(frac = 1)
 	for contig in list(GenotypesDF["CHROM"].unique()):
-		GenotypeChunkDICT[contig] = splitContig(contig, GenotypesDF_ss, nThreads)[0]
-		Remains = Remains.append(splitContig(contig, GenotypesDF_ss, nThreads)[1])
+		GenotypeChunkDICT[contig] = splitContig(contig, GenotypesDF, nThreads)[0]
+		Remains = pd.concat([Remains, splitContig(contig, GenotypesDF, nThreads)[1]])
 	for Chunk in range(0,nThreads):
 		GenotypeChunkDICT_final[Chunk] = pd.DataFrame()
 		for key in GenotypeChunkDICT.keys():
 			try:
-				GenotypeChunkDICT_final[Chunk] = GenotypeChunkDICT_final[Chunk].append(GenotypeChunkDICT[key][Chunk])
+				GenotypeChunkDICT_final[Chunk] = pd.concat([GenotypeChunkDICT_final[Chunk], GenotypeChunkDICT[key][Chunk]])
 			except:
 				continue
 	minChunk=min(GenotypeChunkDICT_final, key=lambda k: len(GenotypeChunkDICT_final[k]))

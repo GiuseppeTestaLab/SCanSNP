@@ -3,7 +3,7 @@
 #Some function for doublets handle
 
 import itertools
-from SCanSNP.VCFUtils import *
+from VCFUtils_copy import *
 from sklearn.linear_model import LogisticRegression
 
 
@@ -11,7 +11,7 @@ def ExtractOrderedDoublets(vcf):
 	'''
 	Extraction of possible doublets belonging to different donors
 	'''
-	doublets=list(itertools.permutations(ExtractSamples(vcf), 2))
+	doublets=list(itertools.permutations(VariantsFile.ExtractSamples(), 2))
 	return doublets
 
 
@@ -19,7 +19,7 @@ def ExtractOrderedDoublets(vcf):
 #def FindSecondID(SingularLociScore,BestInDropDict):
 #	SecondBestIDList = pd.Series([])
 #	for BestID in list(BestInDropDict.keys()):
-#		SingularScoreIDspec = SingularLociScore.loc[BestInDropDict[BestID],list(set(ExtractSamples(vcf)) - set([BestID]))]
+#		SingularScoreIDspec = SingularLociScore.loc[BestInDropDict[BestID],list(set(VariantsFile.ExtractSamples()) - set([BestID]))]
 #		SingularScoreIDspecSS = SingularScoreIDspec[SingularScoreIDspec.apply(lambda row: row.nlargest(2).values[-1],axis=1) != SingularScoreIDspec.apply(lambda row: row.nlargest(1).values[-1],axis=1)]
 #		SecondBestIDList = SecondBestIDList.append(SingularScoreIDspecSS.idxmax(axis = 1))
 #	DBLsDF = pd.DataFrame( columns = ["FirstID","SecondID"], index = [ cell for cell in barcodeList])
@@ -61,13 +61,13 @@ def DoubletSpecificSingularLociScan(vcf,GenotypesDF, cleanLoci):
 def NoiseRregression(BestInDropDict, barcodeList, vcf, SingularLociScoreDF, BestID, LikeliHoodsDF):
 	LogReg = LogisticRegression(multi_class = "multinomial", solver =  "newton-cg", max_iter=100000, penalty = "l2" )
 	DBLsDF = pd.DataFrame()
-	NotNormScore = SingularLociScoreDF[ExtractSamples(vcf)]
+	NotNormScore = SingularLociScoreDF[VariantsFile.ExtractSamples()]
 	for FirstID in list(BestInDropDict.keys()):
 		print(FirstID)
 		print(len(BestInDropDict[FirstID]))
 		BestIDSlice = NotNormScore.loc[BestInDropDict[FirstID]]
-		PredictSet = NotNormScore.loc[BestInDropDict[FirstID],list(set(ExtractSamples(vcf)) - set([FirstID]))]
-		TrainingSet = NotNormScore.loc[list(set(barcodeList) - set(BestInDropDict[FirstID])),list(set(ExtractSamples(vcf)) - set([FirstID]))]
+		PredictSet = NotNormScore.loc[BestInDropDict[FirstID],list(set(VariantsFile.ExtractSamples()) - set([FirstID]))]
+		TrainingSet = NotNormScore.loc[list(set(barcodeList) - set(BestInDropDict[FirstID])),list(set(VariantsFile.ExtractSamples()) - set([FirstID]))]
 		TrainingSet["BestID"] = BestID.loc[list(set(barcodeList ) - set(BestInDropDict[FirstID]))]
 		TrainingSet = TrainingSet[TrainingSet.sum(axis = 1) > 0]
 		BestIDSlice["FirstID"] = FirstID
