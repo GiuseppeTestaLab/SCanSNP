@@ -154,90 +154,20 @@ else:
 	FullDropsKNNseries = None
 
 
+GenotypesDF = VariantsFile.creategenotypeDF()
 
-#Genotypes map creation
-if mode != "pileup":
-	GenotypesDF = VariantsFile.creategenotypeDF()
-
-
-
-if mode == "matrixgen":
-	'''
-	Performing only count
-	'''
-	Counts = CountsMatrices(GenotypesDF,
-		barcodeList, vcf,
-		nThreads, bamFile , barcodetag, umitag)
-		
-	if rawPath is not None:
-		#Save ReadCounts with emptyDrops in Anndata
-		Counts.write_h5ad(outdir+'/varAdata.h5ad')	
-		#Save ReadCounts without emptyDrops in Anndata
-		Counts.slice(barcodeList = FullDrops)[0].write_h5ad(outdir+'/varAdata.h5ad')
-	else:
-		#Save ReadCounts without emptyDrops in Anndata
-		Counts.write_h5ad(outdir+'/varAdata.h5ad')
+GenotypeChunkList,GenotypeChunkIndexesList = FlattenDict(ChunkMaker(GenotypesDF, nThreads))
 
 
 
+locilistChunkX = [GenotypeChunkList[i] for i in GenotypeChunkIndexesList[0]]
+locilistChunkX = pd.DataFrame(locilistChunkX, columns = ["chr","start","ref","alt"])
+locilistChunkX['end'] = locilistChunkX['start']
+locilistChunkX = locilistChunkX[["chr","start","end", "ref","alt"]]
 
+locilistChunkX.to_csv('/tmp/temp.loci.tsv', sep='\t', header=False, index=False )
 
-elif mode == "skipcount":
-	'''
-	Performing only deconvolution based on provided counts
-	'''
-	#Load existing counts
-	varAdata = sc.read_h5ad(countpath)
-	Counts = CountData(varAdata.layers["RefReads"], varAdata.layers["AltReads"], varAdata.var_names, varAdata.obs_names)
-	del varAdata
-	#Deconvolution
-	Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries, platform, segmentation)
-	Cell_IDs.to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True, index_label = "barcode")
-	
-	
-elif mode == "deconvolution":
-	'''
-	Perform both count and ceconvolution
-	'''
-	#counting
-	Counts = CountsMatrices(GenotypesDF,
-		barcodeList, vcf,
-		nThreads, bamFile , barcodetag, umitag)
-	
-	#Save ReadCounts in Anndata
-	if rawPath is not None:
-		#Save ReadCounts with emptyDrops in Anndata
-		Counts.write_h5ad(outdir+'/varAdata.h5ad')	
-		#Save ReadCounts without emptyDrops in Anndata
-		Counts.slice(barcodeList = FullDrops)[0].write_h5ad(outdir+'/varAdata.h5ad')
-	else:
-		#Save ReadCounts without emptyDrops in Anndata
-		Counts.write_h5ad(outdir+'/varAdata.h5ad')
-	
-	#Deconvolution
-	Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries, platform, segmentation)
-	Cell_IDs.to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True, index_label = "barcode")
+print("hellp")
 
-elif mode == "pileup":
-	'''
-	Performing only count on provided loci list, this mode assumes single-sample VCF file.
-	'''
-	
-	GenotypesDF =  pd.read_csv(vcf, sep ="\t", header=None, names=["CHROM","POS","REF","ALT"])
-	GenotypesDF["CHROM"] = GenotypesDF["CHROM"].astype(str)
-	GenotypesDF.index = GenotypesDF["CHROM"]+"_"+GenotypesDF["POS"].astype(str)
-	MildcleanLoci = GenotypesDF[(GenotypesDF["REF"].str.len() == 1) & (GenotypesDF["ALT"].str.len() == 1)].index.tolist()
-	
-	
-	Counts = CountsPileup(GenotypesDF,barcodeList, vcf,nThreads, bamFile, barcodetag, umitag)
-		
-	if rawPath is not None:
-		#Save ReadCounts with emptyDrops in Anndata
-		Counts.write_h5ad(outdir+'/varAdata.h5ad')	
-		#Save ReadCounts without emptyDrops in Anndata
-		Counts.slice(barcodeList = FullDrops)[0].write_h5ad(outdir+'/varAdata.h5ad')
-	else:
-		#Save ReadCounts without emptyDrops in Anndata
-		Counts.write_h5ad(outdir+'/varAdata.h5ad')
 
 
