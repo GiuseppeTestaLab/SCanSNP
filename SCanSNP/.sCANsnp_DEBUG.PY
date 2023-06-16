@@ -3,91 +3,24 @@ import argparse
 import os
 
 
-parser = argparse.ArgumentParser(description='Process some integers.')
-
-
-parser.add_argument('--vcf', dest='vcf', help='joint vcf with all mixed genotypes SNPs',required=True,type=str)
-parser.add_argument('--barcodes', dest='barcodes', help='for matrixgen mode: FILTERED barcodes file in standard 10x .tsv format',required=True,type=str)
-
-
-#conditionally optionals
-parser.add_argument('--bam', dest='bam', help='for matrixgen mode: BAM file of mixed genotypes',type=str)
-parser.add_argument('--counts', dest='countpath',type=str,help='pre-calculated anndata.h5ad with var counts:  adata.layers["RefReads"] and adata.layers["AltReads"]')
-parser.add_argument('--filtered_matrix_path', dest='filtered_matrix', help='path/to/cellranger/filtered/matrix/',default=None,type=str)
-
-
-#Optionals
-parser.add_argument('--threads', dest='nthreads', help='threads to be used',default=10,type=str)
-parser.add_argument('--raw_matrix_path', dest='raw_matrix', help='path/to/cellranger/unfiltered/matrix/',default=None,type=str)
-parser.add_argument('--umitag', dest='umitag', help='tag in the bam file for UMI',default="UB",type=str)
-parser.add_argument('--celltag', dest='barcodetag', help='tag in the bam file for cells',default="CB",type=str)
-parser.add_argument('--segmentation', dest='segmentation', help='tsv with barcode-nuclei information',default=None,type=str)
-parser.add_argument('--outdir', dest='outdir', help='use',default="currentwd",type=str)
-#parser.add_argument('--flagLowQual', dest='LowQual', help='Force-fit GMM to flag lowquality droplets',default=False,type=bool)
-parser.add_argument('--mode', dest='mode', default="deconvolution",
-	required=False,
-	choices=["matrixgen","deconvolution","skipcount","pileup"],
-	type=str,
-	help='creating pileup matrix with ref and alt supporting reads')
-
-parser.add_argument('--platform', dest='platform', default="chromium",
-	required=False,
-	choices=["chromium","visium"],
-	type=str,
-	help='select the library platform')
-
-args = parser.parse_args()
-
-if args.mode == "matrixgen":
-	if args.bam is None or args.barcodes is None:
-		parser.error('please provide --bam and --barcodes for matrixgen mode')
-
-if args.mode == "skipcount":
-	if args.countpath is None:
-		parser.error('please provide path to anndata.h5ad using --counts for skipcount mode')
-
-if args.mode is None or args.mode == "deconvolution":
-	if args.bam is None or args.barcodes is None:
-		parser.error('please provide --bam and --barcodes')
-
-if args.raw_matrix is not None:
-	if args.filtered_matrix is None:
-		parser.error('If --raw_matrix_path is specified also --filtered_matrix_path must be provided')
-
-
-mode=args.mode
-bamFile=args.bam
-vcf=args.vcf
-barcodesFILE=args.barcodes
-nThreads=int(args.nthreads)
-outdir=args.outdir
-countpath=args.countpath
-rawPath=args.raw_matrix
-filteredPath=args.filtered_matrix
-barcodetag=args.barcodetag
-umitag=args.umitag
-platform=args.platform
-segmentation=args.segmentation
-
-
-#mode="deconvolution"
-#platform="visium"
-#bamFile="/group/testa/Users/davide.castaldi/lymph_node_lymphoma_14k_atac_possorted_bam.rmDup.bam"
-#vcf="/home/davide.castaldi/projects/scMultiomeData/atac_vc/parsed.VCF"
-#barcodesFILE="/home/davide.castaldi/projects/scMultiomeData/filtered_feature_bc_matrix/barcodes.tsv.gz"
-#nThreads=20
-#outdir="/home/davide.castaldi/projects/scMultiomeData/atac_vc/"
-#countpath="/hpcnfs/scratch/temporary/Dav_vc/20.4_DemultiMatteo/scRNAseq/demultiplexing/organoidMultiplexing-ensembl_human_93/davide/SYNTH5/scansnp/Counts.pkl"
-#rawPath=None
-#filteredPath=None
+mode="skipcount"
+platform="chromium"
+bamFile="/group/testa/Common/multiome/align/AssembloidsSeqRun2201multiome/amaia.tintori/R11/outs/gex_possorted_bam.bam"
+vcf="/group/testa/Project/AssembloidsDV/scRNASeq/Data/SeqRun2022Multiome/UpStream/WGS_aggregatedVariantCall/test/final.vcf"
+barcodesFILE="/group/testa/Common/multiome/align/AssembloidsSeqRun2201multiome/amaia.tintori/R11/outs/filtered_feature_bc_matrix/barcodes.tsv.gz"
+nThreads=4
+umitag="UB"
+outdir="/home/davide.castaldi/amaia/amaiaTest"
+barcodetag="CB"
+countpath="/home/davide.castaldi/amaia/amaiaTest/varAdata.h5ad"
+rawPath=None
+filteredPath=None
+segmentation=None
 
 if platform == "visium" and segmentation is None:
 	print("No segmentation provided. SCanSNP will only output information about First and Second IDs per barcode")
 
-if outdir == "currentwd":
-	outdir = os.getcwd()
-else:
-	outdir=args.outdir
+
 
 
 if str(outdir).endswith(' '):
@@ -130,7 +63,6 @@ from SCanSNP.GenUtils import *
 
 def main():
 	SampleParseDict = ExtractSamples(vcf, return_dict=True)
-
 	#Creation of differen loci subsets
 	if mode != "pileup":
 		cleanLoci = LociPreClean(vcf)

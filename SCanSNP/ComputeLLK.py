@@ -21,9 +21,9 @@ def ComputeLikelihood(vcf,GenotypesDF,Counts,DiffOnlyIndex):
 	for geno in list(ExtractSamples(vcf)):
 		# in order to account for ploidy
 		npRefGenotypes = (LLKGenotypesDF[geno+"_RefAl"]*0.5).to_numpy()
-		RefPerGeno=LLKCounts.sparseRef.transpose().multiply(npRefGenotypes).multiply(1/totRefAlleles.to_numpy()).transpose()
+		RefPerGeno=LLKCounts.sparseRef.multiply(npRefGenotypes).multiply(1/totRefAlleles.to_numpy()).transpose()
 		npAltGenotypes = (LLKGenotypesDF[geno+"_AltAl"]*0.5).to_numpy()
-		AltPerGeno=LLKCounts.sparseAlt.transpose().multiply(npAltGenotypes).multiply(1/totAltAlleles.to_numpy()).transpose()
+		AltPerGeno=LLKCounts.sparseAlt.multiply(npAltGenotypes).multiply(1/totAltAlleles.to_numpy()).transpose()
 		ScorePerBArcode[geno]=np.array((AltPerGeno+RefPerGeno).transpose().sum(axis = 1))
 	return ScorePerBArcode
 

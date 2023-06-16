@@ -35,7 +35,7 @@ def ReadCounter(chunkIdx, bamFile, barcodeList, GenotypeChunkList, barcodetag, u
 	bam=pysam.AlignmentFile(bamFile, "rb")
 	BarcodeSet=set(barcodeList)
 	readList = []
-	Counts = {"sparse_Ref" : csr_matrix((0, len(barcodeList))), "sparse_Alt":csr_matrix((0, len(barcodeList))), "Locus" : pd.Series()  }
+	Counts = {"sparse_Ref" : csr_matrix((0, len(barcodeList)),dtype=np.int16), "sparse_Alt":csr_matrix((0, len(barcodeList)),dtype=np.int16), "Locus" : pd.Series(dtype="str") }
 	lastPos = chunkIdx[-1]
 	for indexPos in chunkIdx:
 		
@@ -50,7 +50,7 @@ def ReadCounter(chunkIdx, bamFile, barcodeList, GenotypeChunkList, barcodetag, u
 				continue
 			Counts["sparse_Ref"] = scipy.sparse.vstack((Counts["sparse_Ref"],sparse_Ref_TMP))
 			Counts["sparse_Alt"] = scipy.sparse.vstack((Counts["sparse_Alt"],sparse_Alt_TMP))
-			Counts["Locus"] = Counts["Locus"].append(locus_TMP)
+			Counts["Locus"] = pd.concat([Counts["Locus"], locus_TMP])
 			readList = []
 	bam.close()
 	print("Chunk "+ str(chunkIdx) + " completed")
@@ -151,11 +151,11 @@ def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, bar
 	print('Pileup took', time.time()-start, 'seconds.')
 	
 	#Gathering rsults
-	CountsDict = {"sparse_Ref" : csr_matrix((0, len(barcodeList))), "sparse_Alt":csr_matrix((0, len(barcodeList))), "Locus" : pd.Series(),  "Barcode" : pd.Series(sorted(list(barcodeList))) }
+	CountsDict = {"sparse_Ref" : csr_matrix((0, len(barcodeList))), "sparse_Alt":csr_matrix((0, len(barcodeList))), "Locus" : pd.Series(dtype="str"),  "Barcode" : pd.Series(sorted(list(barcodeList))) }
 	for result in results:
 		CountsDict["sparse_Ref"] = scipy.sparse.vstack((CountsDict["sparse_Ref"],result.get()["sparse_Ref"]))
 		CountsDict["sparse_Alt"] = scipy.sparse.vstack((CountsDict["sparse_Alt"],result.get()["sparse_Alt"]))
-		CountsDict["Locus"] =  CountsDict["Locus"].append(result.get()["Locus"])
+		CountsDict["Locus"] =  pd.concat([CountsDict["Locus"],result.get()["Locus"]])
 	
 	Counts = CountData(CountsDict["sparse_Ref"], CountsDict["sparse_Alt"], CountsDict["Locus"], CountsDict["Barcode"])
 	
@@ -190,11 +190,11 @@ def CountsPileup(MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile,b
 	print('Pileup took', time.time()-start, 'seconds.')
 	
 	#Gathering rsults
-	CountsDict = {"sparse_Ref" : csr_matrix((0, len(barcodeList))), "sparse_Alt":csr_matrix((0, len(barcodeList))), "Locus" : pd.Series(),  "Barcode" : pd.Series(sorted(list(barcodeList))) }
+	CountsDict = {"sparse_Ref" : csr_matrix((0, len(barcodeList))), "sparse_Alt":csr_matrix((0, len(barcodeList))), "Locus" : pd.Series(dtype="str"),  "Barcode" : pd.Series(sorted(list(barcodeList))) }
 	for result in results:
 		CountsDict["sparse_Ref"] = scipy.sparse.vstack((CountsDict["sparse_Ref"],result.get()["sparse_Ref"]))
 		CountsDict["sparse_Alt"] = scipy.sparse.vstack((CountsDict["sparse_Alt"],result.get()["sparse_Alt"]))
-		CountsDict["Locus"] =  CountsDict["Locus"].append(result.get()["Locus"])
+		CountsDict["Locus"] =  pd.concat([CountsDict["Locus"],result.get()["Locus"]])
 	
 	Counts = CountData(CountsDict["sparse_Ref"], CountsDict["sparse_Alt"], CountsDict["Locus"], CountsDict["Barcode"])
 	

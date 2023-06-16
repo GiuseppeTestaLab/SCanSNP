@@ -31,6 +31,9 @@ setup(
 	# You can just specify the packages manually here if your project is
 	# simple. Or you can use find_packages().
 	packages=find_packages(),
+	scripts=['SCanSNP/fitdistrplus/fitdist.R', 'SCanSNP/fitdistrplus/quantile.R', 'SCanSNP/ModelFitting/ModelFitting.R'],
+	zip_safe=False,
+	include_package_data=True,
 
 	# List run-time dependencies here.  These will be installed by pip when
 	# your project is installed. For an analysis of "install_requires" vs pip's

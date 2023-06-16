@@ -55,11 +55,11 @@ def SingularLociCNTR( SingularLoci_Alt, SingularLoci_Ref, Counts, barcodeList, G
 	#PileUp for Alt informative loci
 	for ID in IDsToQueryAlt:
 		AltGenotypeID = AltSingularGenotype[ID].to_numpy()
-		CNTRPerBArcodeAlt["_".join(ID.split("_")[:-1])] = np.array(SingularLoci_Alt_Counts.sparseAlt.transpose().multiply(AltGenotypeID).sum(axis = 1))
+		CNTRPerBArcodeAlt["_".join(ID.split("_")[:-1])] = np.array(SingularLoci_Alt_Counts.sparseAlt.multiply(AltGenotypeID).sum(axis = 1))
 	#PileUp for Ref informative loci
 	for ID in IDsToQueryRef:
 		RefGenotypeID = RefSingularGenotype[ID]
-		CNTRPerBArcodeRef["_".join(ID.split("_")[:-1])] = np.array(SingularLoci_Ref_Counts.sparseRef.transpose().multiply(RefGenotypeID).sum(axis = 1))
+		CNTRPerBArcodeRef["_".join(ID.split("_")[:-1])] = np.array(SingularLoci_Ref_Counts.sparseRef.multiply(RefGenotypeID).sum(axis = 1))
 	#Sum both pileups into DF
 	for ID in CNTRPerBArcodeRef.keys():
 		TotalCNTR[ID] =  CNTRPerBArcodeRef[ID]+CNTRPerBArcodeAlt[ID]
@@ -94,12 +94,12 @@ class CountData:
 		Counts_BarcodesMask = self.barcodes.isin(barcodeList if barcodeList is not None else self.barcodes)
 		#Slicing RefCounts
 		#Slicing RefCounts
-		SRef = self.sparseRef[Counts_Locusmask]
-		slicedCounts.sparseRef = SRef[:,Counts_BarcodesMask]
+		SRef = self.sparseRef[:,Counts_Locusmask]
+		slicedCounts.sparseRef = SRef[Counts_BarcodesMask]
 		#Slicing AltCounts
 		#Slicing AltCounts
-		SAlt = self.sparseAlt[Counts_Locusmask]
-		slicedCounts.sparseAlt = SAlt[:,Counts_BarcodesMask]
+		SAlt = self.sparseAlt[:,Counts_Locusmask]
+		slicedCounts.sparseAlt = SAlt[Counts_BarcodesMask]
 		
 		#Slice Barcodes
 		slicedCounts.barcodes = self.barcodes[Counts_BarcodesMask]
@@ -115,7 +115,7 @@ class CountData:
 		return slicedCounts, SGenotypes
 	
 	def write_h5ad(self, writepath=None):
-		varAdata = ad.AnnData(X=self.sparseRef)
+		varAdata = ad.AnnData(X=self.sparseRef, dtype=self.sparseRef.dtype)
 		varAdata.obs_names = self.barcodes.tolist()
 		varAdata.var_names = self.loci.tolist()
 		varAdata.layers["RefReads"] = self.sparseRef
