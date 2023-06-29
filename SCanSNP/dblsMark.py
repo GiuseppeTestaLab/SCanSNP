@@ -131,7 +131,6 @@ def main__DBLsMark(DBLmetricsDF):
 		IDNoise = SafeSNGs.loc[SafeSNGs["FirstID"] != id ,"".join(["ID_", id])]
 		#We try to trim top 5% of droplet signal before fitting negbin in order to remove outlier
 		CroppedNoise = IDNoise
-		print(CroppedNoise.sum())
 		if CroppedNoise.sum() == 0:
 			print("Impossible predict positive threshold for Genotype "+ id + ", it won't be included in doublets detection")
 			continue
@@ -140,15 +139,17 @@ def main__DBLsMark(DBLmetricsDF):
 			continue
 		else:
 			#Wrapping fitdistrplus::fitdist() and stats::quantile() functions from R scripts
-			distFitt=r.fitdist(robjects.vectors.FloatVector(CroppedNoise), distr = "nbinom")
-			#Using 3 as fallBack threhsold in case of 0 thresholding
-			Threshold=r.quantile(distFitt, probs = .99)[0][0][0] if r.quantile(distFitt, probs = .99)[0][0][0] > 0 else 2
-			print("Threshold is,"+str(Threshold))
+			try:
+				distFitt=r.fitdist(robjects.vectors.FloatVector(CroppedNoise), distr = "nbinom")
+				#Using 3 as fallBack threhsold in case of 0 thresholding
+				Threshold=r.quantile(distFitt, probs = .99)[0][0][0] if r.quantile(distFitt, probs = .99)[0][0][0] > 0 else 2
+				print("For ID {} Threshold is {}".format(id, Threshold))
+			except Exception as e:
+				print("mle failed to fit nbinom for genotype Genotype {} , with following exception,  it won't be included in doublets detection {}".format(id, e))
+				continue
 		Positiveid = DBLmetricsDF[DBLmetricsDF["".join(["ID_",id])] > Threshold].index
 		ReadSignals.loc[Positiveid,id] = 1
 		ReadSignals=ReadSignals.fillna(0)
-	
-	
 	DBLs = list(ReadSignals[ReadSignals.sum(axis = 1) > 1].index)
 	
 	return DBLs

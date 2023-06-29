@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
 import itertools
-from VCFUtils_copy import *
+from SCanSNP.VCFUtils import *
 from sklearn.linear_model import LogisticRegression
-from DBLsutils import *
-from GenUtils import *
+from SCanSNP.DBLsutils import *
+from SCanSNP.GenUtils import *
 
 def LocusSpecNoisCalc(DropToDBLDict,Doublet,SingularLociScoreDF,GenotypesDF,vcf,HomozlociList,RefHetLoci,AltHetLoci):
 	comp1 = Doublet[0]
@@ -12,32 +12,32 @@ def LocusSpecNoisCalc(DropToDBLDict,Doublet,SingularLociScoreDF,GenotypesDF,vcf,
 	#Step 1 work on HomozLoci
 	#Step 1 work on HomozLoci
 	## - Calculate normalized Noise
-	NormalizedNoise=SingularLociScoreDF.loc[DropToDBLDict[Doublet], ["".join([component,"_Norm"]) for component in VariantsFile.ExtractSamples() if component not in [comp1,comp2]]]
+	NormalizedNoise=SingularLociScoreDF.loc[DropToDBLDict[Doublet], ["".join([component,"_Norm"]) for component in ExtractSamples(vcf) if component not in [comp1,comp2]]]
 	TotalNoise=NormalizedNoise.sum(axis = 1)
 	## 1.1 Calculate normalized Ref Allelic contribution of noise
-	RefAl=GenotypesDF.loc[HomozlociList, ["".join([component,"_RefAl"]) for component in VariantsFile.ExtractSamples()]]
+	RefAl=GenotypesDF.loc[HomozlociList, ["".join([component,"_RefAl"]) for component in ExtractSamples(vcf)]]
 	RelRefAlAboundance=RefAl.divide(RefAl.sum(axis = 1), axis = 0)
-	Noise_RefAl_Ratio=RelRefAlAboundance[["".join([component,"_RefAl"]) for component in VariantsFile.ExtractSamples() if component not in [comp1,comp2]]].sum(axis = 1)
+	Noise_RefAl_Ratio=RelRefAlAboundance[["".join([component,"_RefAl"]) for component in ExtractSamples(vcf) if component not in [comp1,comp2]]].sum(axis = 1)
 	LocuS_Ref_Noise=Noise_RefAl_Ratio.to_frame().dot(TotalNoise.to_frame().T)
 	CleanRefSignal=1-LocuS_Ref_Noise
 	## 1.2 Calculate normalized Alt Allelic contribution of noise
-	AltAl=GenotypesDF.loc[HomozlociList, ["".join([component,"_AltAl"]) for component in VariantsFile.ExtractSamples()]]
+	AltAl=GenotypesDF.loc[HomozlociList, ["".join([component,"_AltAl"]) for component in ExtractSamples(vcf)]]
 	RelAltAlAboundance=AltAl.divide(AltAl.sum(axis = 1), axis = 0)
-	Noise_AltAl_Ratio=RelAltAlAboundance[["".join([component,"_AltAl"]) for component in VariantsFile.ExtractSamples() if component not in [comp1,comp2]]].sum(axis = 1)
+	Noise_AltAl_Ratio=RelAltAlAboundance[["".join([component,"_AltAl"]) for component in ExtractSamples(vcf) if component not in [comp1,comp2]]].sum(axis = 1)
 	LocuS_Alt_Noise=Noise_AltAl_Ratio.to_frame().dot(TotalNoise.to_frame().T)
 	CleanAltSignal=1-LocuS_Alt_Noise
 	#Step 2 work on HetLoci
 	#Step 2 work on HetLoci
 	## 2.1 Calculate normalized Ref Allelic contribution of noise
-	Ref_HET_Al=GenotypesDF.loc[RefHetLoci, ["".join([component,"_RefAl"]) for component in VariantsFile.ExtractSamples()]]
+	Ref_HET_Al=GenotypesDF.loc[RefHetLoci, ["".join([component,"_RefAl"]) for component in ExtractSamples(vcf)]]
 	RelRef_HET_AlAboundance=Ref_HET_Al.divide(Ref_HET_Al.sum(axis = 1), axis = 0)
-	Noise_Ref_HET_Al_Ratio=RelRef_HET_AlAboundance[["".join([component,"_RefAl"]) for component in VariantsFile.ExtractSamples() if component not in [comp1,comp2]]].sum(axis = 1)
+	Noise_Ref_HET_Al_Ratio=RelRef_HET_AlAboundance[["".join([component,"_RefAl"]) for component in ExtractSamples(vcf) if component not in [comp1,comp2]]].sum(axis = 1)
 	LocuS_Ref_HET_Noise=Noise_Ref_HET_Al_Ratio.to_frame().dot(TotalNoise.to_frame().T)
 	CleanRef_HET_Signal=1-LocuS_Ref_HET_Noise
 	## 2.2 Calculate normalized Alt Allelic contribution of noise
-	Alt_HET_Al=GenotypesDF.loc[AltHetLoci, ["".join([component,"_AltAl"]) for component in VariantsFile.ExtractSamples()]]
+	Alt_HET_Al=GenotypesDF.loc[AltHetLoci, ["".join([component,"_AltAl"]) for component in ExtractSamples(vcf)]]
 	RelAlt_HET_AlAboundance=Alt_HET_Al.divide(Alt_HET_Al.sum(axis = 1), axis = 0)
-	Noise_Alt_HET_Al_Ratio=RelAlt_HET_AlAboundance[["".join([component,"_AltAl"]) for component in VariantsFile.ExtractSamples() if component not in [comp1,comp2]]].sum(axis = 1)
+	Noise_Alt_HET_Al_Ratio=RelAlt_HET_AlAboundance[["".join([component,"_AltAl"]) for component in ExtractSamples(vcf) if component not in [comp1,comp2]]].sum(axis = 1)
 	LocuS_Alt_HET_Noise=Noise_Alt_HET_Al_Ratio.to_frame().dot(TotalNoise.to_frame().T)
 	CleanAlt_HET_Signal=1-LocuS_Alt_HET_Noise
 	return CleanRefSignal,CleanAltSignal,CleanRef_HET_Signal,CleanAlt_HET_Signal
@@ -72,8 +72,8 @@ def LowQualScore(DropToDBLDict,Counts,DBLSpecificSingularLociDict,vcf, Genotypes
 		##First thing use HomoLoci information
 		##First thing use HomoLoci information
 		# Cleaning Signals from Locus Nloise
-		RefReads_HOMOZ=Counts__HOMOZ.sparseRef.multiply(CleanRefSignal)
-		AltReads_HOMOZ=Counts__HOMOZ.sparseAlt.multiply(CleanAltSignal)
+		RefReads_HOMOZ=Counts__HOMOZ.sparseRef.T.multiply(CleanRefSignal)
+		AltReads_HOMOZ=Counts__HOMOZ.sparseAlt.T.multiply(CleanAltSignal)
 		#For each component of Putative DBl we calc the score
 		HomozRefScoresComp1 = RefReads_HOMOZ.T.multiply(GenotypesDF_sliced_HOMOZ[comp1+"_RefAl"].to_numpy()).T
 		HomozRefScoresComp2 = RefReads_HOMOZ.T.multiply(GenotypesDF_sliced_HOMOZ[comp2+"_RefAl"].to_numpy()).T
@@ -86,14 +86,14 @@ def LowQualScore(DropToDBLDict,Counts,DBLSpecificSingularLociDict,vcf, Genotypes
 		#Now info about Singular Ref loci
 		#Now info about Singular Ref loci
 		# Cleaning Signals from Locus Nloise
-		RefReads_HETEROZ=Counts_RefHet.sparseRef.multiply(CleanRef_HET_Signal)
+		RefReads_HETEROZ=Counts_RefHet.sparseRef.T.multiply(CleanRef_HET_Signal)
 		HeterozRefScoreComp1 = RefReads_HETEROZ.T.multiply(GenotypesDF_sliced_RefHet[comp1+"_RefAl"].to_numpy()).T
 		HeterozRefScoreComp2 = RefReads_HETEROZ.T.multiply(GenotypesDF_sliced_RefHet[comp2+"_RefAl"].to_numpy()).T
 		
 		#Now those of Singular Alt loci
 		#Now those of Singular Alt loci
 		#Now those of Singular Alt loci
-		AltReads_HETEROZ=Counts_AltHet.sparseAlt.multiply(CleanAlt_HET_Signal)
+		AltReads_HETEROZ=Counts_AltHet.sparseAlt.T.multiply(CleanAlt_HET_Signal)
 		HeterozAltScoreComp1 = AltReads_HETEROZ.T.multiply(GenotypesDF_sliced_AltHet[comp1+"_AltAl"].to_numpy()).T
 		HeterozAltScoreComp2 = AltReads_HETEROZ.T.multiply(GenotypesDF_sliced_AltHet[comp2+"_AltAl"].to_numpy()).T
 		
