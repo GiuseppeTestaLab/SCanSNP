@@ -3,7 +3,7 @@ import argparse
 import os
 
 
-parser = argparse.ArgumentParser(description='Process some integers.')
+parser = argparse.ArgumentParser(description='SCanSNP args')
 
 
 parser.add_argument('--vcf', dest='vcf', help='joint vcf with all mixed genotypes SNPs',required=True,type=str)
@@ -18,6 +18,7 @@ parser.add_argument('--filtered_matrix_path', dest='filtered_matrix', help='path
 
 #Optionals
 parser.add_argument('--threads', dest='nthreads', help='threads to be used',default=10,type=str)
+parser.add_argument('--filterbam', dest='filterbam', help='pre filter bam reads on barcodelist. can improve speed',default=False,type=bool)
 parser.add_argument('--raw_matrix_path', dest='raw_matrix', help='path/to/cellranger/unfiltered/matrix/',default=None,type=str)
 parser.add_argument('--umitag', dest='umitag', help='tag in the bam file for UMI',default="UB",type=str)
 parser.add_argument('--celltag', dest='barcodetag', help='tag in the bam file for cells',default="CB",type=str)
@@ -68,7 +69,7 @@ barcodetag=args.barcodetag
 umitag=args.umitag
 platform=args.platform
 segmentation=args.segmentation
-
+filterbam=args.filterbam
 
 #mode="deconvolution"
 #platform="visium"
@@ -120,13 +121,39 @@ import scipy
 import pickle
 import anndata as ad
 import scanpy as sc
+import time
 
-#sys.path.append('/home/davide.castaldi/git/SCanSNP/SCanSNP')
+
+
+#sys.path.append('/tmp/SCanSNP/SCanSNP')
 
 from SCanSNP.VCFUtils import *
 from SCanSNP.Wrappers import *
 from SCanSNP.RawBCMatrix_Utils import *
 from SCanSNP.GenUtils import *
+
+
+
+
+
+#Pre filter of bamfile
+
+#save starting time
+StartingTime = time.time()
+
+
+if filterbam:
+	filteredBam = bamFilter(barcodesFILE, nThreads,bamFile, barcodetag, umitag, outdir, vcf )
+	bamFile = filteredBam
+
+#compare starting time with bam eta to confirm the removal upon completion
+if ((os.path.getctime(bamFile) - StartingTime) > 0 ) and (filterbam):
+	deleteBam = True
+else:
+	deleteBam = False
+
+
+
 
 def main():
 	SampleParseDict = ExtractSamples(vcf, return_dict=True)
@@ -162,7 +189,7 @@ def main():
 		Counts = CountsMatrices(CleanSingularLoci, cleanLoci,
 			MildcleanLoci, GenotypesDF,
 			barcodeList, vcf,
-			nThreads, bamFile , barcodetag, umitag)
+			nThreads, bamFile , barcodetag, umitag, filterbam)
 			
 		if rawPath is not None:
 			#Save ReadCounts with emptyDrops in Anndata
@@ -194,7 +221,7 @@ def main():
 		Counts = CountsMatrices(CleanSingularLoci, cleanLoci,
 			MildcleanLoci, GenotypesDF,
 			barcodeList, vcf,
-			nThreads, bamFile , barcodetag, umitag)
+			nThreads, bamFile , barcodetag, umitag, filterbam)
 		
 		#Save ReadCounts in Anndata
 		if rawPath is not None:
@@ -221,7 +248,7 @@ def main():
 		MildcleanLoci = GenotypesDF[(GenotypesDF["REF"].str.len() == 1) & (GenotypesDF["ALT"].str.len() == 1)].index.tolist()
 		
 		
-		Counts = CountsPileup(MildcleanLoci, GenotypesDF,barcodeList, vcf,nThreads, bamFile, barcodetag, umitag)
+		Counts = CountsPileup(MildcleanLoci, GenotypesDF,barcodeList, vcf,nThreads, bamFile, barcodetag, umitag, filterbam)
 			
 		if rawPath is not None:
 			#Save ReadCounts with emptyDrops in Anndata
@@ -231,7 +258,13 @@ def main():
 		else:
 			#Save ReadCounts without emptyDrops in Anndata
 			Counts.write_h5ad(outdir+'/varAdata.h5ad')
-
+	
+	if deleteBam:
+		os.remove(bamFile)
+		os.remove(bamFile+".bai")
+		os.remove(str(outdir)+"/loci.filt.bed")
+		os.remove(str(outdir)+"/barcodes.extracted.tsv")
+		
 
 
 if __name__ == "__main__":

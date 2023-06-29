@@ -68,8 +68,8 @@ def NoiseRregression(BestInDropDict, barcodeList, vcf, SingularLociScoreDF, Best
 		BestIDSlice = NotNormScore.loc[BestInDropDict[FirstID]]
 		PredictSet = NotNormScore.loc[BestInDropDict[FirstID],list(set(ExtractSamples(vcf)) - set([FirstID]))]
 		TrainingSet = NotNormScore.loc[list(set(barcodeList) - set(BestInDropDict[FirstID])),list(set(ExtractSamples(vcf)) - set([FirstID]))]
-		TrainingSet["BestID"] = BestID.loc[list(set(barcodeList ) - set(BestInDropDict[FirstID]))]
 		TrainingSet = TrainingSet[TrainingSet.sum(axis = 1) > 0]
+		TrainingSet["BestID"] = BestID.loc[list(set(barcodeList ) - set(BestInDropDict[FirstID]))]
 		BestIDSlice["FirstID"] = FirstID
 		# if the first Id is unique than the training set is empty
 		# we use the likelihood dataframe to select the second best ID

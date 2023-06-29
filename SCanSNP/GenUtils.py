@@ -7,6 +7,10 @@ from scipy.sparse import csr_matrix
 import copy
 import anndata as ad
 import numpy as np
+import gzip
+import shutil
+import subprocess
+import time
 
 #from Wrappers import *
 
@@ -124,3 +128,31 @@ class CountData:
 		
 		return None
 
+
+
+def bamFilter(barcodesFILE, nThreads,bamFile, barcodetag, umitag, outdir, vcf ):
+	start = time.time()
+	print("Pre filtering bam according to provided barcodes file")
+	extractedFile = str(outdir)+"/barcodes.extracted.tsv"
+	filteredBam = str(outdir)+"/filtered.bam"
+	regionsFile = str(outdir)+"/loci.filt.bed"
+	#Defining active bam regions
+	LociBed = pd.DataFrame(ExtractInfo(vcf))[["CHROM","POS"]]
+	LociBed["POS"] = LociBed["POS"].astype(int) - 2
+	LociBed["END"] = LociBed["POS"] + 4
+	LociBed.to_csv(regionsFile, sep="\t", header=False, index=False)
+	#Convertt if needed barcodes file
+	extractedFile = str(outdir)+"/barcodes.extracted.tsv"
+	filteredBam = str(outdir)+"/filtered.bam"
+	if barcodesFILE.endswith(".gz"):
+		with gzip.open(barcodesFILE, 'rb') as f_in:
+			with open(extractedFile, 'wb') as f_out:
+				shutil.copyfileobj(f_in, f_out)
+	else:
+		shutil.copy(barcodesFILE, extractedFile)
+	#Bam cleaning
+	subprocess.call("samtools view -h -@ {} -D CB:{} --region-file {} -F 3844 --min-MQ 3 --keep-tag {},{} -o {} {} ".format(nThreads, extractedFile, regionsFile,  barcodetag,umitag,  filteredBam, bamFile  ), shell=True)
+	#subprocess.call("samtools view -h -@ {} -D CB:{} --keep-tag {},{} -o {} {} ".format(nThreads, extractedFile, barcodetag,umitag,  filteredBam, bamFile ), shell=True)
+	subprocess.call("samtools index {} ".format(filteredBam), shell=True)
+	print('Pre filter took', time.time()-start, 'seconds.')
+	return(filteredBam)

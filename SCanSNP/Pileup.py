@@ -31,7 +31,7 @@ from itertools import chain
 
 
 
-def ReadCounter(chunkIdx, bamFile, barcodeList, GenotypeChunkList, barcodetag, umitag):
+def ReadCounter(chunkIdx, bamFile, barcodeList, GenotypeChunkList, barcodetag, umitag, filterbam):
 	bam=pysam.AlignmentFile(bamFile, "rb")
 	BarcodeSet=set(barcodeList)
 	readList = []
@@ -41,7 +41,7 @@ def ReadCounter(chunkIdx, bamFile, barcodeList, GenotypeChunkList, barcodetag, u
 		
 		locus = GenotypeChunkList[indexPos]
 		
-		readList=Pileupper(bam, locus, lastPos,BarcodeSet, readList,barcodetag, umitag)
+		readList = Pileupper_preFilt(bam, locus, lastPos,BarcodeSet, readList,barcodetag, umitag) if filterbam else Pileupper(bam, locus, lastPos,BarcodeSet, readList,barcodetag, umitag) 
 		
 		if sys.getsizeof(readList) >= 30000000 or indexPos == lastPos:
 			try:
@@ -59,8 +59,6 @@ def ReadCounter(chunkIdx, bamFile, barcodeList, GenotypeChunkList, barcodetag, u
 
 
 def Pileupper(bam, locus, lastPos, BarcodeSet, readList, barcodetag, umitag, bannedFlag=3844, mapQuality=2, baseQuality=20 , readLength=30):
-	##!!! Accessing readList "fake global" because of diverse GIL spawned for childs<<<<
-	# UMItag not used in this version
 	for read in bam.fetch(locus[0], locus[1]-1, locus[1]):
 	#Check for position coverage
 		try:
@@ -88,6 +86,23 @@ def Pileupper(bam, locus, lastPos, BarcodeSet, readList, barcodetag, umitag, ban
 			readList.append([locus[0]+ "_"+str(locus[1]), CB, redBase, locus[2], locus[3] ])
 	return readList
 
+
+def Pileupper_preFilt(bam, locus, lastPos, BarcodeSet, readList, barcodetag, umitag, baseQuality=20 , readLength=30):
+	for read in bam.fetch(locus[0], locus[1]-1, locus[1]):
+	#Check for position coverage
+		CB=read.get_tag(barcodetag)
+		try:
+			position = read.positions.index(int(locus[1]) - 1)
+		except:
+			continue
+		if read.query_alignment_qualities[position] < baseQuality:
+			continue
+		if read.rlen < readLength:
+			continue
+		redBase = read.query_alignment_sequence[position]
+		if ( redBase == locus[2] or redBase == locus[3]):
+			readList.append([locus[0]+ "_"+str(locus[1]), CB, redBase, locus[2], locus[3] ])
+	return readList
 
 
 
@@ -123,7 +138,7 @@ def DFMaker(readList, barcodeList):
 
 
 
-def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile, barcodetag, umitag):
+def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile, barcodetag, umitag, filterbam):
 	'''
 	Fire-up the main Pileupper
 	'''
@@ -141,7 +156,7 @@ def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, bar
 	pool=Pool(nThreads)
 
 	for chunkIdx in GenotypeChunkIndexesList:
-		result = pool.apply_async(ReadCounter, (chunkIdx, bamFile, barcodeList,GenotypeChunkList,barcodetag, umitag))
+		result = pool.apply_async(ReadCounter, (chunkIdx, bamFile, barcodeList,GenotypeChunkList,barcodetag, umitag,filterbam ))
 		results.append(result)
 
 
@@ -164,7 +179,7 @@ def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, bar
 	
 
 
-def CountsPileup(MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile,barcodetag, umitag):
+def CountsPileup(MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile,barcodetag, umitag, filterbam):
 	'''
 	Fire-up the main Pileupper assuming 1 only ID in VCF i.e. sc pileup over list of loci
 	'''
@@ -180,7 +195,7 @@ def CountsPileup(MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile,b
 	pool=Pool(nThreads)
 
 	for chunkIdx in GenotypeChunkIndexesList:
-		result = pool.apply_async(ReadCounter, (chunkIdx, bamFile, barcodeList,GenotypeChunkList, barcodetag, umitag))
+		result = pool.apply_async(ReadCounter, (chunkIdx, bamFile, barcodeList,GenotypeChunkList, barcodetag, umitag, filterbam))
 		results.append(result)
 
 

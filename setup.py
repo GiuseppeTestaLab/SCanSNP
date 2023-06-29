@@ -1,14 +1,16 @@
 from setuptools import setup, find_packages
 
 
-requirements=['pandas>=1.1.5',
-'pysam>=0.16.0.1',
-'numpy>=1.19.5',
-'scanpy>=1.7.2',
-'scikit-learn>=0.23.1',
-'scipy>=1.5.4',
-'rpy2>=3.4.2',
-'anndata>=0.7.6']
+requirements=['pandas==1.1.5',
+'pysam==0.16.0.1',
+'numpy==1.19.5',
+'scanpy==1.7.2',
+'scikit-learn==0.23.1',
+'scipy==1.5.4',
+'rpy2==3.4.2',
+'numba==0.56.4',
+'matplotlib==3.6.3',
+'anndata==0.7.6']
 
 
 setup(
@@ -23,7 +25,7 @@ setup(
 	
 	entry_points={
 		'console_scripts': [
-			  'SCanSNP = SCanSNP.SCanSNP:main',
+			  'SCanSNP = SCanSNP.scansnp:main',
 			  ],
 		  }, 
 
