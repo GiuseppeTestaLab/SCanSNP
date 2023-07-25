@@ -6,8 +6,6 @@
     conda activate SCanSNP
     conda install -c conda-forge r-base=3.5.1 r-ggplot2 r-mixtools r-dplyr r-robustbase r-cluster r-gridExtra 
     pip3 install git/SCanSNP
-    #conda install -c anaconda readline=6.2
-    #libreadline.so.6
 
 ## __Usage__
 
