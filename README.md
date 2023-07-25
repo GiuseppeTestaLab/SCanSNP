@@ -12,6 +12,16 @@
 ## __Usage__
 
     SCanSNP --vcf $multi_sample.vcf --barcodes $barcodes.tsv --bam $bam_file --outdir $output_directory
+    
+### __additional args__
+
+
+    --counts COUNTPATH  anndata.h5ad with var counts: adata.layers["RefReads"] and adata.layers["AltReads"] previously obtained running --mode matrixgen
+    --threads NTHREADS    threads to be used
+    --segmentation Path to segmentation tsv file with barcodes X number of nuclei. When --platform visium is specified this file can be provided to improve the signal to noise calculation and will unlock the formal assignment of multiple genotypes per pack
+    --mode {matrixgen,deconvolution,skipcount,pileup}
+    --platform {chromium,visium}
+
 
 ### 10.1.2022 - Changes
 
