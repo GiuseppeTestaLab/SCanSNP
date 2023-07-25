@@ -11,6 +11,8 @@
 
 ## __Usage__
 
+    SCanSNP --vcf $multi_sample.vcf --barcodes $barcodes.tsv --bam $bam_file --outdir $output_directory
+
 ### 10.1.2022 - Changes
 
 **Modifications in `SCanSNP.py`**
