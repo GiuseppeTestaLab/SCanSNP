@@ -16,10 +16,13 @@
 ### __additional args__
 
     --mode {deconvolution,matrixgen,skipcount,pileup}
-    	pileup: allows the user to provide a list of loci in bed format and output anndata with ref and alt reads information [not extensively tested]
-    	deconvolution: default mode will run through the full demultiplexing given input vcf, barcodes list and bamfile
+    	pileup: allows the user to provide a list of loci in bed format and output 
+     		anndata with ref and alt reads information [not extensively tested]
+    	deconvolution: default mode will run through the full demultiplexing given 
+     		input vcf, barcodes list and bamfile
      	matrixgen: scansnp will only generate anndata with nBarcodes x nLoci 
-      	counts for each allel will be stored in adata.layers["RefReads"] and adata.layers["AltReads"] the default .X will be same as adata.layers["RefReads"]
+      	counts for each allel will be stored in adata.layers["RefReads"] and adata.layers["AltReads"] 
+       		the default .X will be same as adata.layers["RefReads"]
        	skipcount: pick up the demultiplexing starting from previously saved anndata
     --counts COUNTPATH:  anndata.h5ad with var counts: adata.layers["RefReads"] and adata.layers["AltReads"] 
     	previously obtained running --mode matrixgen. 
