@@ -17,8 +17,7 @@ SCanSNP --vcf $multi_sample.vcf --barcodes $barcodes.tsv --bam $bam_file --outdi
 
 ### __additional args__
 <pre>
---mode {deconvolution,matrixgen,skipcount,pileup}
-	pileup: allows the user to provide a list of loci in bed format and output 
+--mode {deconvolution,matrixgen,skipcount}
 	anndata with ref and alt reads information [not extensively tested]
  
 	deconvolution: default mode will run through the full demultiplexing given 
