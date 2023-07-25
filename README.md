@@ -10,9 +10,9 @@
     #libreadline.so.6
 
 ## __Usage__
-
-    SCanSNP --vcf $multi_sample.vcf --barcodes $barcodes.tsv --bam $bam_file --outdir $output_directory
-    
+<pre>
+SCanSNP --vcf $multi_sample.vcf --barcodes $barcodes.tsv --bam $bam_file --outdir $output_directory
+<pre>  
 ### __additional args__
 
     --mode {deconvolution,matrixgen,skipcount,pileup}
