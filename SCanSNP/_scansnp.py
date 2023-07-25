@@ -21,6 +21,7 @@ parser.add_argument('--threads', dest='nthreads', help='threads to be used',defa
 parser.add_argument('--raw_matrix_path', dest='raw_matrix', help='path/to/cellranger/unfiltered/matrix/',default=None,type=str)
 parser.add_argument('--umitag', dest='umitag', help='tag in the bam file for UMI',default="UB",type=str)
 parser.add_argument('--celltag', dest='barcodetag', help='tag in the bam file for cells',default="CB",type=str)
+parser.add_argument('--segmentation', dest='segmentation', help='tsv with barcode-nuclei information',default=None,type=str)
 parser.add_argument('--outdir', dest='outdir', help='use',default="currentwd",type=str)
 #parser.add_argument('--flagLowQual', dest='LowQual', help='Force-fit GMM to flag lowquality droplets',default=False,type=bool)
 parser.add_argument('--mode', dest='mode', default="deconvolution",
@@ -43,7 +44,7 @@ if args.mode == "matrixgen":
 
 if args.mode == "skipcount":
 	if args.countpath is None:
-		parser.error('please provide path to anndata.h5ad using --pickle for skipcount mode')
+		parser.error('please provide path to anndata.h5ad using --counts for skipcount mode')
 
 if args.mode is None or args.mode == "deconvolution":
 	if args.bam is None or args.barcodes is None:
@@ -65,8 +66,12 @@ rawPath=args.raw_matrix
 filteredPath=args.filtered_matrix
 barcodetag=args.barcodetag
 umitag=args.umitag
+platform=args.platform
+segmentation=args.segmentation
 
-#mode="matrixgen"
+
+#mode="deconvolution"
+#platform="visium"
 #bamFile="/group/testa/Users/davide.castaldi/lymph_node_lymphoma_14k_atac_possorted_bam.rmDup.bam"
 #vcf="/home/davide.castaldi/projects/scMultiomeData/atac_vc/parsed.VCF"
 #barcodesFILE="/home/davide.castaldi/projects/scMultiomeData/filtered_feature_bc_matrix/barcodes.tsv.gz"
@@ -76,7 +81,8 @@ umitag=args.umitag
 #rawPath=None
 #filteredPath=None
 
-
+if platform == "visium" and segmentation is None:
+	print("No segmentation provided. SCanSNP will only output information about First and Second IDs per barcode")
 
 if outdir == "currentwd":
 	outdir = os.getcwd()
@@ -115,18 +121,21 @@ import pickle
 import anndata as ad
 import scanpy as sc
 
-#sys.path.append('/home/davide.castaldi/git/SCanSNP/SCanSNP')
+#sys.path.append('/tmp/SCanSNP/SCanSNP')
 
-from VCFUtils import *
-from Wrappers import *
-from RawBCMatrix_Utils import *
-from GenUtils import *
+from SCanSNP.VCFUtils import *
+from SCanSNP.Wrappers import *
+from SCanSNP.RawBCMatrix_Utils import *
+from SCanSNP.GenUtils import *
 
-if __name__ == "__main__":
+def main():
+	SampleParseDict = ExtractSamples(vcf, return_dict=True)
+
 	#Creation of differen loci subsets
-	cleanLoci = LociPreClean(vcf)
-	MildcleanLoci = LociPreClean_milds(vcf)
-	CleanSingularLoci,SingularLoci_Alt,SingularLoci_Ref = SingularLociSCan(vcf,cleanLoci)
+	if mode != "pileup":
+		cleanLoci = LociPreClean(vcf)
+		MildcleanLoci = LociPreClean_milds(vcf)
+		CleanSingularLoci,SingularLoci_Alt,SingularLoci_Ref = SingularLociSCan(vcf,cleanLoci)
 	
 	FullDrops = pd.read_csv(barcodesFILE, header=None, names=["b"])["b"].astype("string").tolist()
 	
@@ -141,7 +150,9 @@ if __name__ == "__main__":
 	
 	
 	#Genotypes map creation
-	GenotypesDF = creategenotypeDF(vcf)
+	if mode != "pileup":
+		GenotypesDF = creategenotypeDF(vcf)
+	
 	
 	
 	if mode == "matrixgen":
@@ -168,11 +179,11 @@ if __name__ == "__main__":
 		'''
 		#Load existing counts
 		varAdata = sc.read_h5ad(countpath)
-		Counts = CountData(varAdata.layers["sparse_Ref"], varAdata.layers["sparse_Alt"], varAdata.var_names, varAdata.obs_names)
+		Counts = CountData(varAdata.layers["RefReads"].T, varAdata.layers["AltReads"].T, varAdata.var_names, varAdata.obs_names)
 		del varAdata
 		#Deconvolution
-		Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries)
-		Cell_IDs.to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True, index_label = "barcode")
+		Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries, platform, segmentation)
+		Cell_IDs.replace(SampleParseDict).to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True, index_label = "barcode")
 		
 		
 	elif mode == "deconvolution":
@@ -196,13 +207,20 @@ if __name__ == "__main__":
 			Counts.write_h5ad(outdir+'/varAdata.h5ad')
 		
 		#Deconvolution
-		Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries)
-		Cell_IDs.to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True, index_label = "barcode")
+		Cell_IDs = deconvolution(Counts, vcf, GenotypesDF,outdir,FullDrops, FullDropsKNNseries, platform, segmentation)
+		Cell_IDs.replace(SampleParseDict).to_csv(outdir + "/Cell_IDs.tsv", sep = "\t", header = True, index = True, index_label = "barcode")
 
 	elif mode == "pileup":
 		'''
 		Performing only count on provided loci list, this mode assumes single-sample VCF file.
 		'''
+		
+		GenotypesDF =  pd.read_csv(vcf, sep ="\t", header=None, names=["CHROM","POS","REF","ALT"])
+		GenotypesDF["CHROM"] = GenotypesDF["CHROM"].astype(str)
+		GenotypesDF.index = GenotypesDF["CHROM"]+"_"+GenotypesDF["POS"].astype(str)
+		MildcleanLoci = GenotypesDF[(GenotypesDF["REF"].str.len() == 1) & (GenotypesDF["ALT"].str.len() == 1)].index.tolist()
+		
+		
 		Counts = CountsPileup(MildcleanLoci, GenotypesDF,barcodeList, vcf,nThreads, bamFile, barcodetag, umitag)
 			
 		if rawPath is not None:
@@ -213,3 +231,8 @@ if __name__ == "__main__":
 		else:
 			#Save ReadCounts without emptyDrops in Anndata
 			Counts.write_h5ad(outdir+'/varAdata.h5ad')
+
+
+
+if __name__ == "__main__":
+	main()

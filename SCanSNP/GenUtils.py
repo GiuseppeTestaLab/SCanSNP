@@ -1,11 +1,16 @@
 #!/usr/bin/env python
 
-from VCFUtils import *
-from DBLsutils import *
-from Pileup import *
+from SCanSNP.VCFUtils import *
+from SCanSNP.DBLsutils import *
+#from SCanSNP.Pileup import *
 from scipy.sparse import csr_matrix
 import copy
 import anndata as ad
+import numpy as np
+import gzip
+import shutil
+import subprocess
+import time
 
 #from Wrappers import *
 
@@ -54,11 +59,11 @@ def SingularLociCNTR( SingularLoci_Alt, SingularLoci_Ref, Counts, barcodeList, G
 	#PileUp for Alt informative loci
 	for ID in IDsToQueryAlt:
 		AltGenotypeID = AltSingularGenotype[ID].to_numpy()
-		CNTRPerBArcodeAlt["_".join(ID.split("_")[:-1])] = np.array(SingularLoci_Alt_Counts.sparseAlt.transpose().multiply(AltGenotypeID).sum(axis = 1))
+		CNTRPerBArcodeAlt["_".join(ID.split("_")[:-1])] = np.array(SingularLoci_Alt_Counts.sparseAlt.multiply(AltGenotypeID).sum(axis = 1))
 	#PileUp for Ref informative loci
 	for ID in IDsToQueryRef:
 		RefGenotypeID = RefSingularGenotype[ID]
-		CNTRPerBArcodeRef["_".join(ID.split("_")[:-1])] = np.array(SingularLoci_Ref_Counts.sparseRef.transpose().multiply(RefGenotypeID).sum(axis = 1))
+		CNTRPerBArcodeRef["_".join(ID.split("_")[:-1])] = np.array(SingularLoci_Ref_Counts.sparseRef.multiply(RefGenotypeID).sum(axis = 1))
 	#Sum both pileups into DF
 	for ID in CNTRPerBArcodeRef.keys():
 		TotalCNTR[ID] =  CNTRPerBArcodeRef[ID]+CNTRPerBArcodeAlt[ID]
@@ -72,11 +77,11 @@ def SingularLociCNTR( SingularLoci_Alt, SingularLoci_Ref, Counts, barcodeList, G
 class CountData:
 	
 	def __init__(self, sparseRef, sparseAlt, loci, barcodes):
-		self.sparseRef = sparseRef
-		self.sparseAlt = sparseAlt
+		self.sparseRef = sparseRef.T
+		self.sparseAlt = sparseAlt.T
 		self.loci = loci
 		self.barcodes = barcodes
-		
+	
 	
 	def copy(self):
 		return copy.copy(self)
@@ -93,12 +98,12 @@ class CountData:
 		Counts_BarcodesMask = self.barcodes.isin(barcodeList if barcodeList is not None else self.barcodes)
 		#Slicing RefCounts
 		#Slicing RefCounts
-		SRef = self.sparseRef[Counts_Locusmask]
-		slicedCounts.sparseRef = SRef[:,Counts_BarcodesMask]
+		SRef = self.sparseRef[:,Counts_Locusmask]
+		slicedCounts.sparseRef = SRef[Counts_BarcodesMask]
 		#Slicing AltCounts
 		#Slicing AltCounts
-		SAlt = self.sparseAlt[Counts_Locusmask]
-		slicedCounts.sparseAlt = SAlt[:,Counts_BarcodesMask]
+		SAlt = self.sparseAlt[:,Counts_Locusmask]
+		slicedCounts.sparseAlt = SAlt[Counts_BarcodesMask]
 		
 		#Slice Barcodes
 		slicedCounts.barcodes = self.barcodes[Counts_BarcodesMask]
@@ -114,12 +119,40 @@ class CountData:
 		return slicedCounts, SGenotypes
 	
 	def write_h5ad(self, writepath=None):
-		varAdata = ad.AnnData(X=self.sparseRef.T)
+		varAdata = ad.AnnData(X=self.sparseRef, dtype=self.sparseRef.dtype)
 		varAdata.obs_names = self.barcodes.tolist()
 		varAdata.var_names = self.loci.tolist()
-		varAdata.layers["RefReads"] = self.sparseRef.T
-		varAdata.layers["AltReads"] = self.sparseAlt.T
+		varAdata.layers["RefReads"] = self.sparseRef
+		varAdata.layers["AltReads"] = self.sparseAlt
 		varAdata.write_h5ad(writepath)
 		
 		return None
 
+
+
+def bamFilter(barcodesFILE, nThreads,bamFile, barcodetag, umitag, outdir, vcf ):
+	start = time.time()
+	print("Pre filtering bam according to provided barcodes file")
+	extractedFile = str(outdir)+"/barcodes.extracted.tsv"
+	filteredBam = str(outdir)+"/filtered.bam"
+	regionsFile = str(outdir)+"/loci.filt.bed"
+	#Defining active bam regions
+	LociBed = pd.DataFrame(ExtractInfo(vcf))[["CHROM","POS"]]
+	LociBed["POS"] = LociBed["POS"].astype(int) - 2
+	LociBed["END"] = LociBed["POS"] + 4
+	LociBed.to_csv(regionsFile, sep="\t", header=False, index=False)
+	#Convertt if needed barcodes file
+	extractedFile = str(outdir)+"/barcodes.extracted.tsv"
+	filteredBam = str(outdir)+"/filtered.bam"
+	if barcodesFILE.endswith(".gz"):
+		with gzip.open(barcodesFILE, 'rb') as f_in:
+			with open(extractedFile, 'wb') as f_out:
+				shutil.copyfileobj(f_in, f_out)
+	else:
+		shutil.copy(barcodesFILE, extractedFile)
+	#Bam cleaning
+	subprocess.call("samtools view -h -@ {} -D CB:{} --region-file {} -F 3844 --min-MQ 3 --keep-tag {},{} -o {} {} ".format(nThreads, extractedFile, regionsFile,  barcodetag,umitag,  filteredBam, bamFile  ), shell=True)
+	#subprocess.call("samtools view -h -@ {} -D CB:{} --keep-tag {},{} -o {} {} ".format(nThreads, extractedFile, barcodetag,umitag,  filteredBam, bamFile ), shell=True)
+	subprocess.call("samtools index {} ".format(filteredBam), shell=True)
+	print('Pre filter took', time.time()-start, 'seconds.')
+	return(filteredBam)

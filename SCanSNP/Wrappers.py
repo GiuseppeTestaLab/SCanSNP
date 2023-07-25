@@ -1,30 +1,32 @@
 #!/usr/bin/env python
 
-from VCFUtils import *
-from DBLsutils import *
-from Pileup import *
+
 from scipy.sparse import csr_matrix
 import time
 from multiprocessing import Pool
 import itertools
-from ComputeLLK import *
-from GenUtils import *
-from LowQualutils import *
-from lowQualityMark import *
-from lowQualityMark_wEmpty import *
-from dblsMark import *
-from dblsMark_wEmpty import *
 from itertools import chain
 import scipy.sparse
+from SCanSNP.classifyUtils import *
+from SCanSNP.VCFUtils import *
+from SCanSNP.DBLsutils import *
+from SCanSNP.ComputeLLK import *
+from SCanSNP.GenUtils import *
+from SCanSNP.LowQualutils import *
+from SCanSNP.lowQualityMark import *
+from SCanSNP.lowQualityMark_wEmpty import *
+from SCanSNP.dblsMark import *
+from SCanSNP.dblsMark_wEmpty import *
+from SCanSNP.Pileup import *
 
 
-
-
-def deconvolution(Counts, vcf, GenotypesDF, outdir, FullDrops, FullDropsKNNseries):
+def deconvolution(Counts, vcf, GenotypesDF, outdir, FullDrops, FullDropsKNNseries, platform, segmentation):
 	#CountDF reconstruction
 	# SparseCounts=scipy.sparse.load_npz(str(countpath) + '/Counts.npz')
 	# Barcodes=pd.read_csv(str(countpath) + '/countBarcodes.tsv', header=None, names=["barcodes"])
 	# Loci=pd.read_csv(str(countpath) + '/countLoci.tsv', header=None, names=["loci"])
+
+	#pd.read_csv("/group/testa/Project/PGCLC/multiSEQ_playground_2/segmentationDF.tsv", names=["segmentation"], sep="\t")
 	
 	emptyTraining = True if len(FullDrops) < len(Counts.barcodes) else False
 	
@@ -58,7 +60,7 @@ def deconvolution(Counts, vcf, GenotypesDF, outdir, FullDrops, FullDropsKNNserie
 	SingularLociScoreDF = SingularLociCNTR( SingularLoci_Alt, SingularLoci_Ref, Counts, barcodeList, GenotypesDF,vcf)
 	
 	if len(ExtractSamples(vcf)) > 2:
-		DBLsDF=NoiseRregression(BestInDropDict, barcodeList, vcf, SingularLociScoreDF, BestBarcodeID)
+		DBLsDF=NoiseRregression(BestInDropDict, barcodeList, vcf, SingularLociScoreDF, BestBarcodeID, LikeliHoodsDF)
 	else:
 		ID1 = list(BestInDropDict.keys())[0]
 		ID2 = list(BestInDropDict.keys())[1]
@@ -82,24 +84,24 @@ def deconvolution(Counts, vcf, GenotypesDF, outdir, FullDrops, FullDropsKNNserie
 	
 	DBLmetricsDF = pd.concat([Contributions,DBLs_ADJ_Contributions,BestIDs], axis = 1)
 	
-	#DBLs detection Module
-	DBLsList = main__DBLsMark_wEmpty(DBLmetricsDF,FullDrops ) if emptyTraining else main__DBLsMark(DBLmetricsDF)
-	
-	
-	DBLmetricsDF["DropletType"] = "Singlet"
-	DBLmetricsDF.loc[DBLsList,"DropletType"] = "Doublet"
-	DBLmetricsDF["ID"] = DBLmetricsDF["FirstID"]
-	DBLmetricsDF.loc[DBLmetricsDF["DropletType"] == "Doublet","ID"] = "Doublet"
-	
-	
-	
-	
-	if emptyTraining:
-		Cell_IDs = main_FlagLowQual_wEmpty(DBLmetricsDF, DBLsList, outdir,FullDrops,FullDropsKNNseries, HighOutlierThreshold = .95,LowOutlierThreshold = .05)
-	else:
-		Cell_IDs = main_FlagLowQual(DBLmetricsDF, DBLsList, outdir)
+	if platform == "chromium":
+		#DBLs detection Module
+		DBLsList = main__DBLsMark_wEmpty(DBLmetricsDF,FullDrops ) if emptyTraining else main__DBLsMark(DBLmetricsDF)
+		DBLmetricsDF["DropletType"] = "Singlet"
+		DBLmetricsDF.loc[DBLsList,"DropletType"] = "Doublet"
+		DBLmetricsDF["ID"] = DBLmetricsDF["FirstID"]
+		DBLmetricsDF.loc[DBLmetricsDF["DropletType"] == "Doublet","ID"] = "Doublet"
+		if emptyTraining:
+			Cell_IDs = main_FlagLowQual_wEmpty(DBLmetricsDF, DBLsList, outdir,FullDrops,FullDropsKNNseries, HighOutlierThreshold = .95,LowOutlierThreshold = .05)
+		else:
+			Cell_IDs = main_FlagLowQual(DBLmetricsDF, DBLsList, outdir)	
+		#pd.concat([Contributions,DBLsContributions,BestIDs], axis = 1).to_csv(writePath + "/DBLmetricsDF.tsv", sep = "\t", header = True, index = True)
+	elif platform == "visium":
+		if segmentation is None:
+			Cell_IDs = DBLmetricsDF
+		else:
+			segmentationDF = pd.read_csv(segmentation, names=["segmentation"], sep="\t")
+			SegmentationClassified = barcodeClassifier_main(DBLmetricsDF, segmentationDF)
+			Cell_IDs = pd.concat([DBLmetricsDF,SegmentationClassified], axis = 1)
 		
-		
-	
-	#pd.concat([Contributions,DBLsContributions,BestIDs], axis = 1).to_csv(writePath + "/DBLmetricsDF.tsv", sep = "\t", header = True, index = True)
 	return Cell_IDs

@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
 import itertools
-from VCFUtils import *
+from SCanSNP.VCFUtils import *
 from sklearn.linear_model import LogisticRegression
-from DBLsutils import *
-from GenUtils import *
+from SCanSNP.DBLsutils import *
+from SCanSNP.GenUtils import *
 
 def LocusSpecNoisCalc(DropToDBLDict,Doublet,SingularLociScoreDF,GenotypesDF,vcf,HomozlociList,RefHetLoci,AltHetLoci):
 	comp1 = Doublet[0]
@@ -72,8 +72,8 @@ def LowQualScore(DropToDBLDict,Counts,DBLSpecificSingularLociDict,vcf, Genotypes
 		##First thing use HomoLoci information
 		##First thing use HomoLoci information
 		# Cleaning Signals from Locus Nloise
-		RefReads_HOMOZ=Counts__HOMOZ.sparseRef.multiply(CleanRefSignal)
-		AltReads_HOMOZ=Counts__HOMOZ.sparseAlt.multiply(CleanAltSignal)
+		RefReads_HOMOZ=Counts__HOMOZ.sparseRef.T.multiply(CleanRefSignal)
+		AltReads_HOMOZ=Counts__HOMOZ.sparseAlt.T.multiply(CleanAltSignal)
 		#For each component of Putative DBl we calc the score
 		HomozRefScoresComp1 = RefReads_HOMOZ.T.multiply(GenotypesDF_sliced_HOMOZ[comp1+"_RefAl"].to_numpy()).T
 		HomozRefScoresComp2 = RefReads_HOMOZ.T.multiply(GenotypesDF_sliced_HOMOZ[comp2+"_RefAl"].to_numpy()).T
@@ -86,14 +86,14 @@ def LowQualScore(DropToDBLDict,Counts,DBLSpecificSingularLociDict,vcf, Genotypes
 		#Now info about Singular Ref loci
 		#Now info about Singular Ref loci
 		# Cleaning Signals from Locus Nloise
-		RefReads_HETEROZ=Counts_RefHet.sparseRef.multiply(CleanRef_HET_Signal)
+		RefReads_HETEROZ=Counts_RefHet.sparseRef.T.multiply(CleanRef_HET_Signal)
 		HeterozRefScoreComp1 = RefReads_HETEROZ.T.multiply(GenotypesDF_sliced_RefHet[comp1+"_RefAl"].to_numpy()).T
 		HeterozRefScoreComp2 = RefReads_HETEROZ.T.multiply(GenotypesDF_sliced_RefHet[comp2+"_RefAl"].to_numpy()).T
 		
 		#Now those of Singular Alt loci
 		#Now those of Singular Alt loci
 		#Now those of Singular Alt loci
-		AltReads_HETEROZ=Counts_AltHet.sparseAlt.multiply(CleanAlt_HET_Signal)
+		AltReads_HETEROZ=Counts_AltHet.sparseAlt.T.multiply(CleanAlt_HET_Signal)
 		HeterozAltScoreComp1 = AltReads_HETEROZ.T.multiply(GenotypesDF_sliced_AltHet[comp1+"_AltAl"].to_numpy()).T
 		HeterozAltScoreComp2 = AltReads_HETEROZ.T.multiply(GenotypesDF_sliced_AltHet[comp2+"_AltAl"].to_numpy()).T
 		

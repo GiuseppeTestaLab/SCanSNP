@@ -11,14 +11,17 @@ from collections import Counter
 import math
 
 
-def ExtractSamples(vcf):
+def ExtractSamples(vcf,return_dict=False):
 	'''
 	Extraction of sample names from VCF
 	'''
 	with open(vcf, "r") as lociList:
 		for line in (line for line in lociList if line.startswith("#CHR")):
-			#samplePos=range(9,9+len(str(line).split()[9:]),1)
-			samples=["_".join(["ID", samp]) for samp in  line.strip().split("\t")[9:]]
+				if return_dict:
+					samples = [samp for samp in  line.strip().split("\t")[9:]]
+					samples = {i.replace("_", "@"):i for i in samples}
+				else:
+					samples=["_".join(["ID", samp.replace("_", "@")]) for samp in  line.strip().split("\t")[9:]]
 	return samples
 
 
@@ -72,7 +75,8 @@ def creategenotypeDF(vcf):
 	#Generating GenotypesDF from Index and Colnames
 	colnames=["CHROM","POS","ID","REF","ALT"]+list(itertools.chain(*[ (sample+"_RefAl", sample + "_AltAl") for sample  in ExtractSamples(vcf)]))
 	GenotypesDF2 = pd.DataFrame(index=ExtractIndex(vcf), columns=colnames).fillna(0)
-	GenotypesDF2[["CHROM","POS","ID","REF","ALT"]] = ExtractInfo(vcf).values()
+	for col in ["CHROM","POS","ID","REF","ALT"]:
+		GenotypesDF2[col] = ExtractInfo(vcf)[col]
 	#Filling the missing GenotypesDf columns with genotype informations
 	ReferenceVCF=readVCF(vcf)
 	for column in ReferenceVCF:
@@ -100,7 +104,7 @@ def LociPreClean(vcf):
 				sampleline=line.strip().split("\t")[9:]
 				Genotypes=[i.split(':', 1)[0] for i in sampleline]
 				GenotypesPhaseRemoved=[re.sub(r'\|', '/', geno) for geno in Genotypes]
-				if ('./.' in GenotypesPhaseRemoved or "," in alt or len(ref) > 1 or len(alt) > 1 ):
+				if ('./.' in GenotypesPhaseRemoved or './1' in GenotypesPhaseRemoved or '0/.' in GenotypesPhaseRemoved or "," in alt or len(ref) > 1 or len(alt) > 1 ):
 					continue
 				CleanLociList.append("_".join([line.split("\t")[0],line.split("\t")[1]]))
 	return CleanLociList
@@ -218,16 +222,16 @@ def ChunkMaker(GenotypesDF, nThreads, OmniIndex):
 	GenotypesDF_ss = GenotypesDF.loc[OmniIndex].sample(frac = 1)
 	for contig in list(GenotypesDF["CHROM"].unique()):
 		GenotypeChunkDICT[contig] = splitContig(contig, GenotypesDF_ss, nThreads)[0]
-		Remains = Remains.append(splitContig(contig, GenotypesDF_ss, nThreads)[1])
+		Remains = pd.concat([Remains , splitContig(contig, GenotypesDF_ss, nThreads)[1]])
 	for Chunk in range(0,nThreads):
 		GenotypeChunkDICT_final[Chunk] = pd.DataFrame()
 		for key in GenotypeChunkDICT.keys():
 			try:
-				GenotypeChunkDICT_final[Chunk] = GenotypeChunkDICT_final[Chunk].append(GenotypeChunkDICT[key][Chunk])
+				GenotypeChunkDICT_final[Chunk] = pd.concat([GenotypeChunkDICT_final[Chunk], GenotypeChunkDICT[key][Chunk]])
 			except:
 				continue
 	minChunk=min(GenotypeChunkDICT_final, key=lambda k: len(GenotypeChunkDICT_final[k]))
-	GenotypeChunkDICT_final[minChunk] = GenotypeChunkDICT_final[minChunk].append(Remains)
+	GenotypeChunkDICT_final[minChunk] = pd.concat([GenotypeChunkDICT_final[minChunk],Remains])
 	return GenotypeChunkDICT_final
 
 

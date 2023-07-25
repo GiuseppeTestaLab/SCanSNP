@@ -4,8 +4,12 @@ import time
 import itertools
 import io
 import numpy as np
-from pandarallel import pandarallel
 import sys
+import os
+from .VCFUtils import *
+from .Wrappers import *
+from .RawBCMatrix_Utils import *
+from .GenUtils import *
 
 
 

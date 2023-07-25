@@ -11,36 +11,37 @@ import pandas as pd
 import itertools
 from scipy.sparse import csr_matrix
 import scipy.sparse
+from SCanSNP.GenUtils import CountData
 
-from VCFUtils import *
-from DBLsutils import *
+from SCanSNP.VCFUtils import *
+from SCanSNP.DBLsutils import *
 
 import time
 from multiprocessing import Pool
-from ComputeLLK import *
-from GenUtils import *
-from LowQualutils import *
-from lowQualityMark import *
-from lowQualityMark_wEmpty import *
-from dblsMark import *
-from dblsMark_wEmpty import *
+from SCanSNP.ComputeLLK import *
+#from SCanSNP.GenUtils import *
+from SCanSNP.LowQualutils import *
+from SCanSNP.lowQualityMark import *
+from SCanSNP.lowQualityMark_wEmpty import *
+from SCanSNP.dblsMark import *
+from SCanSNP.dblsMark_wEmpty import *
 from itertools import chain
 
 
 
 
 
-def ReadCounter(chunkIdx, bamFile, barcodeList, GenotypeChunkList, barcodetag, umitag):
+def ReadCounter(chunkIdx, bamFile, barcodeList, GenotypeChunkList, barcodetag, umitag, filterbam):
 	bam=pysam.AlignmentFile(bamFile, "rb")
 	BarcodeSet=set(barcodeList)
 	readList = []
-	Counts = {"sparse_Ref" : csr_matrix((0, len(barcodeList))), "sparse_Alt":csr_matrix((0, len(barcodeList))), "Locus" : pd.Series()  }
+	Counts = {"sparse_Ref" : csr_matrix((0, len(barcodeList)),dtype=np.int16), "sparse_Alt":csr_matrix((0, len(barcodeList)),dtype=np.int16), "Locus" : pd.Series(dtype="str") }
 	lastPos = chunkIdx[-1]
 	for indexPos in chunkIdx:
 		
 		locus = GenotypeChunkList[indexPos]
 		
-		readList=Pileupper(bam, locus, lastPos,BarcodeSet, readList,barcodetag, umitag)
+		readList = Pileupper_preFilt(bam, locus, lastPos,BarcodeSet, readList,barcodetag, umitag) if filterbam else Pileupper(bam, locus, lastPos,BarcodeSet, readList,barcodetag, umitag) 
 		
 		if sys.getsizeof(readList) >= 30000000 or indexPos == lastPos:
 			try:
@@ -49,7 +50,7 @@ def ReadCounter(chunkIdx, bamFile, barcodeList, GenotypeChunkList, barcodetag, u
 				continue
 			Counts["sparse_Ref"] = scipy.sparse.vstack((Counts["sparse_Ref"],sparse_Ref_TMP))
 			Counts["sparse_Alt"] = scipy.sparse.vstack((Counts["sparse_Alt"],sparse_Alt_TMP))
-			Counts["Locus"] = Counts["Locus"].append(locus_TMP)
+			Counts["Locus"] = pd.concat([Counts["Locus"], locus_TMP])
 			readList = []
 	bam.close()
 	print("Chunk "+ str(chunkIdx) + " completed")
@@ -58,8 +59,6 @@ def ReadCounter(chunkIdx, bamFile, barcodeList, GenotypeChunkList, barcodetag, u
 
 
 def Pileupper(bam, locus, lastPos, BarcodeSet, readList, barcodetag, umitag, bannedFlag=3844, mapQuality=2, baseQuality=20 , readLength=30):
-	##!!! Accessing readList "fake global" because of diverse GIL spawned for childs<<<<
-	# UMItag not used in this version
 	for read in bam.fetch(locus[0], locus[1]-1, locus[1]):
 	#Check for position coverage
 		try:
@@ -87,6 +86,23 @@ def Pileupper(bam, locus, lastPos, BarcodeSet, readList, barcodetag, umitag, ban
 			readList.append([locus[0]+ "_"+str(locus[1]), CB, redBase, locus[2], locus[3] ])
 	return readList
 
+
+def Pileupper_preFilt(bam, locus, lastPos, BarcodeSet, readList, barcodetag, umitag, baseQuality=20 , readLength=30):
+	for read in bam.fetch(locus[0], locus[1]-1, locus[1]):
+	#Check for position coverage
+		CB=read.get_tag(barcodetag)
+		try:
+			position = read.positions.index(int(locus[1]) - 1)
+		except:
+			continue
+		if read.query_alignment_qualities[position] < baseQuality:
+			continue
+		if read.rlen < readLength:
+			continue
+		redBase = read.query_alignment_sequence[position]
+		if ( redBase == locus[2] or redBase == locus[3]):
+			readList.append([locus[0]+ "_"+str(locus[1]), CB, redBase, locus[2], locus[3] ])
+	return readList
 
 
 
@@ -122,7 +138,7 @@ def DFMaker(readList, barcodeList):
 
 
 
-def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile, barcodetag, umitag):
+def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile, barcodetag, umitag, filterbam):
 	'''
 	Fire-up the main Pileupper
 	'''
@@ -140,7 +156,7 @@ def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, bar
 	pool=Pool(nThreads)
 
 	for chunkIdx in GenotypeChunkIndexesList:
-		result = pool.apply_async(ReadCounter, (chunkIdx, bamFile, barcodeList,GenotypeChunkList,barcodetag, umitag))
+		result = pool.apply_async(ReadCounter, (chunkIdx, bamFile, barcodeList,GenotypeChunkList,barcodetag, umitag,filterbam ))
 		results.append(result)
 
 
@@ -150,11 +166,11 @@ def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, bar
 	print('Pileup took', time.time()-start, 'seconds.')
 	
 	#Gathering rsults
-	CountsDict = {"sparse_Ref" : csr_matrix((0, len(barcodeList))), "sparse_Alt":csr_matrix((0, len(barcodeList))), "Locus" : pd.Series(),  "Barcode" : pd.Series(sorted(list(barcodeList))) }
+	CountsDict = {"sparse_Ref" : csr_matrix((0, len(barcodeList))), "sparse_Alt":csr_matrix((0, len(barcodeList))), "Locus" : pd.Series(dtype="str"),  "Barcode" : pd.Series(sorted(list(barcodeList))) }
 	for result in results:
 		CountsDict["sparse_Ref"] = scipy.sparse.vstack((CountsDict["sparse_Ref"],result.get()["sparse_Ref"]))
 		CountsDict["sparse_Alt"] = scipy.sparse.vstack((CountsDict["sparse_Alt"],result.get()["sparse_Alt"]))
-		CountsDict["Locus"] =  CountsDict["Locus"].append(result.get()["Locus"])
+		CountsDict["Locus"] =  pd.concat([CountsDict["Locus"],result.get()["Locus"]])
 	
 	Counts = CountData(CountsDict["sparse_Ref"], CountsDict["sparse_Alt"], CountsDict["Locus"], CountsDict["Barcode"])
 	
@@ -163,7 +179,7 @@ def CountsMatrices(CleanSingularLoci, cleanLoci, MildcleanLoci, GenotypesDF, bar
 	
 
 
-def CountsPileup(MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile,barcodetag, umitag):
+def CountsPileup(MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile,barcodetag, umitag, filterbam):
 	'''
 	Fire-up the main Pileupper assuming 1 only ID in VCF i.e. sc pileup over list of loci
 	'''
@@ -179,7 +195,7 @@ def CountsPileup(MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile,b
 	pool=Pool(nThreads)
 
 	for chunkIdx in GenotypeChunkIndexesList:
-		result = pool.apply_async(ReadCounter, (chunkIdx, bamFile, barcodeList,GenotypeChunkList, barcodetag, umitag))
+		result = pool.apply_async(ReadCounter, (chunkIdx, bamFile, barcodeList,GenotypeChunkList, barcodetag, umitag, filterbam))
 		results.append(result)
 
 
@@ -189,11 +205,11 @@ def CountsPileup(MildcleanLoci, GenotypesDF, barcodeList,vcf,nThreads, bamFile,b
 	print('Pileup took', time.time()-start, 'seconds.')
 	
 	#Gathering rsults
-	CountsDict = {"sparse_Ref" : csr_matrix((0, len(barcodeList))), "sparse_Alt":csr_matrix((0, len(barcodeList))), "Locus" : pd.Series(),  "Barcode" : pd.Series(sorted(list(barcodeList))) }
+	CountsDict = {"sparse_Ref" : csr_matrix((0, len(barcodeList))), "sparse_Alt":csr_matrix((0, len(barcodeList))), "Locus" : pd.Series(dtype="str"),  "Barcode" : pd.Series(sorted(list(barcodeList))) }
 	for result in results:
 		CountsDict["sparse_Ref"] = scipy.sparse.vstack((CountsDict["sparse_Ref"],result.get()["sparse_Ref"]))
 		CountsDict["sparse_Alt"] = scipy.sparse.vstack((CountsDict["sparse_Alt"],result.get()["sparse_Alt"]))
-		CountsDict["Locus"] =  CountsDict["Locus"].append(result.get()["Locus"])
+		CountsDict["Locus"] =  pd.concat([CountsDict["Locus"],result.get()["Locus"]])
 	
 	Counts = CountData(CountsDict["sparse_Ref"], CountsDict["sparse_Alt"], CountsDict["Locus"], CountsDict["Barcode"])
 	
