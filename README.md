@@ -1,6 +1,6 @@
 # SCanSNP
 
-## __Dependencies manually installed in simulated home__
+## __Installation__
 
     conda create -n SCanSNP python==3.8
     conda activate SCanSNP
