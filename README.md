@@ -30,11 +30,10 @@ SCanSNP --vcf $multi_sample.vcf --barcodes $barcodes.tsv --bam $bam_file --outdi
 	 
 	skipcount: pick up the demultiplexing starting from previously saved anndata
 	
---counts COUNTPATH:  anndata.h5ad with var counts: adata.layers["RefReads"] and adata.layers["AltReads"] 
-    	previously obtained running --mode matrixgen. 
-     	This file is mandatory if --mode skipcount
+--counts COUNTPATH: path to previously obtained anndata (--mode matrixgen) mandatory if --mode skipcount
 --threads NTHREADS    threads to be used
---segmentation Path to segmentation tsv file with barcodes X number of nuclei. When --platform visium is specified this file can be provided to improve the signal to noise calculation and will unlock the formal assignment of multiple genotypes per pack
+--segmentation Path to segmentation tsv file with barcodes X number of nuclei. 
+	When --platform visium is specified this file can be provided to improve the signal to noise calculation and will unlock the formal assignment of multiple genotypes per pack
 
 --platform {chromium,visium}
 </pre>
