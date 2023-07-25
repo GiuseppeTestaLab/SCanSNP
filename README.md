@@ -16,28 +16,28 @@ SCanSNP --vcf $multi_sample.vcf --barcodes $barcodes.tsv --bam $bam_file --outdi
 </pre>
 
 ### __additional args__
-
-    --mode {deconvolution,matrixgen,skipcount,pileup}
-    	pileup: allows the user to provide a list of loci in bed format and output 
-     		anndata with ref and alt reads information [not extensively tested]
+<pre>
+--mode {deconvolution,matrixgen,skipcount,pileup}
+	pileup: allows the user to provide a list of loci in bed format and output 
+	anndata with ref and alt reads information [not extensively tested]
+ 
+	deconvolution: default mode will run through the full demultiplexing given 
+	input vcf, barcodes list and bamfile
        
-    	deconvolution: default mode will run through the full demultiplexing given 
-     		input vcf, barcodes list and bamfile
-       
-     	matrixgen: scansnp will only generate anndata with nBarcodes x nLoci 
-      
-      	counts for each allel will be stored in adata.layers["RefReads"] and adata.layers["AltReads"] 
-       		the default .X will be same as adata.layers["RefReads"]
+	matrixgen: scansnp will only generate anndata with nBarcodes x nLoci 
+	counts for each allel will be stored in adata.layers["RefReads"] and adata.layers["AltReads"] 
+	the default .X will be same as adata.layers["RefReads"]
 	 
-       	skipcount: pick up the demultiplexing starting from previously saved anndata
+	skipcount: pick up the demultiplexing starting from previously saved anndata
 	
-    --counts COUNTPATH:  anndata.h5ad with var counts: adata.layers["RefReads"] and adata.layers["AltReads"] 
+--counts COUNTPATH:  anndata.h5ad with var counts: adata.layers["RefReads"] and adata.layers["AltReads"] 
     	previously obtained running --mode matrixgen. 
      	This file is mandatory if --mode skipcount
-    --threads NTHREADS    threads to be used
-    --segmentation Path to segmentation tsv file with barcodes X number of nuclei. When --platform visium is specified this file can be provided to improve the signal to noise calculation and will unlock the formal assignment of multiple genotypes per pack
+--threads NTHREADS    threads to be used
+--segmentation Path to segmentation tsv file with barcodes X number of nuclei. When --platform visium is specified this file can be provided to improve the signal to noise calculation and will unlock the formal assignment of multiple genotypes per pack
 
-    --platform {chromium,visium}
+--platform {chromium,visium}
+</pre>
 
 
 ### 10.1.2022 - Changes
