@@ -13,7 +13,7 @@
 
 <pre>
 SCanSNP --vcf $multi_sample.vcf --barcodes $barcodes.tsv --bam $bam_file --outdir $output_directory
-<pre>  
+</pre>
 
 ### __additional args__
 
