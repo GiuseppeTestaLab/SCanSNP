@@ -9,6 +9,8 @@
     #conda install -c anaconda readline=6.2
     #libreadline.so.6
 
+## __Usage__
+
 ### 10.1.2022 - Changes
 
 **Modifications in `SCanSNP.py`**
