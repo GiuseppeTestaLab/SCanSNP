@@ -2,10 +2,18 @@
 
 ## __Installation__
 
-    conda create -n SCanSNP python==3.8
-    conda activate SCanSNP
-    conda install -c conda-forge r-base=3.5.1 r-ggplot2 r-mixtools r-dplyr r-robustbase r-cluster r-gridExtra 
-    pip3 install git/SCanSNP
+<pre>
+conda create -n SCanSNP python==3.8
+conda activate SCanSNP
+conda install -c conda-forge r-base=3.5.1 r-ggplot2 r-mixtools r-dplyr r-robustbase r-cluster r-gridExtra 
+pip3 install git/SCanSNP
+</pre>
+
+## __Container is available via__
+
+<pre>
+docker pull davidecast/scansnp:1.1.0
+</pre>
 
 ## __Usage__
 
