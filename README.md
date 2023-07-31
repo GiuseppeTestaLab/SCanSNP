@@ -9,7 +9,7 @@ conda install -c conda-forge r-base=3.5.1 r-ggplot2 r-mixtools r-dplyr r-robustb
 pip3 install git/SCanSNP
 </pre>
 
-## __Container is available via__
+## __Or docker image__
 
 <pre>
 docker pull davidecast/scansnp:1.1.0
