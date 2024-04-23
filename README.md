@@ -6,7 +6,8 @@
 conda create -n SCanSNP python==3.8
 conda activate SCanSNP
 conda install -c conda-forge r-base=3.5.1 r-ggplot2 r-mixtools r-dplyr r-robustbase r-cluster r-gridExtra 
-pip3 install git/SCanSNP
+git clone git@github.com:GiuseppeTestaLab/SCanSNP.git
+pip3 install ./SCanSNP
 </pre>
 
 ## __Or docker image__
